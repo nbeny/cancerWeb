@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.next/
+.turbo/
+*.log
+.env
+.env.local
+.ai-workspace/
+coverage/
+playwright-report/
+test-results/
+apps/api/generated/

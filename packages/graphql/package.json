@@ -1,0 +1,23 @@
+{
+  "name": "@cancerweb/graphql",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/generated.ts",
+  "types": "./src/generated.ts",
+  "scripts": {
+    "codegen": "graphql-codegen --config codegen.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "graphql": "^16.14.2",
+    "graphql-request": "^7.4.0",
+    "graphql-tag": "^2.12.7"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^7.3.1",
+    "@graphql-codegen/typescript": "^6.1.0",
+    "@graphql-codegen/typescript-graphql-request": "^7.1.0",
+    "@graphql-codegen/typescript-operations": "^6.1.6",
+    "typescript": "^5.7.0"
+  }
+}

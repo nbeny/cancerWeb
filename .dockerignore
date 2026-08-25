@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+.git
+*.log
+.env
+.env.*.local
+.ai-workspace
+coverage
+**/coverage
+playwright-report
+test-results
+apps/api/generated

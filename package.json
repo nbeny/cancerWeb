@@ -1,0 +1,21 @@
+{
+  "name": "cancerweb",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "docker compose up -d postgres redis && pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "db:migrate": "pnpm --filter @cancerweb/api db:migrate",
+    "db:seed": "pnpm --filter @cancerweb/api db:seed",
+    "codegen": "pnpm --filter @cancerweb/graphql codegen",
+    "worker": "pnpm --filter @cancerweb/api worker"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0"
+  }
+}

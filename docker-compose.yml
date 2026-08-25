@@ -1,0 +1,119 @@
+name: cancerweb
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cancerweb
+      POSTGRES_PASSWORD: cancerweb
+      POSTGRES_DB: cancerweb
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cancerweb -d cancerweb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cancerweb
+      POSTGRES_PASSWORD: cancerweb
+      POSTGRES_DB: cancerweb_test
+    ports: ["5434:5432"]
+    tmpfs: ["/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cancerweb -d cancerweb_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: ["redisdata:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Service à usage unique : applique les migrations Prisma puis se termine
+  # (code de sortie 0/1). `prisma migrate deploy` est idempotent — rejouer
+  # des migrations déjà appliquées est un no-op — donc un `docker compose up`
+  # répété est sans danger. C'est délibérément un service séparé plutôt
+  # qu'une étape au démarrage de `api` : si `api` était un jour scalé
+  # (plusieurs répliques), chaque réplique lancerait la migration en
+  # parallèle et risquerait une course (deux processus qui tentent de créer
+  # la même table simultanément). En le sortant du conteneur applicatif, la
+  # migration ne s'exécute qu'une fois, avec un signal de réussite/échec net
+  # (`condition: service_completed_successfully`) que `api` et `worker`
+  # peuvent attendre avant de démarrer.
+  migrate:
+    build: { context: ., dockerfile: docker/api.Dockerfile }
+    command: ["pnpm", "run", "prisma:deploy"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://cancerweb:cancerweb@postgres:5432/cancerweb?schema=public
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    build: { context: ., dockerfile: docker/api.Dockerfile }
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://cancerweb:cancerweb@postgres:5432/cancerweb?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: { context: ., dockerfile: docker/api.Dockerfile }
+    command: ["node", "dist/worker"]
+    env_file: [.env]
+    environment:
+      DATABASE_URL: postgresql://cancerweb:cancerweb@postgres:5432/cancerweb?schema=public
+      REDIS_URL: redis://redis:6379
+      AI_PROVIDER: fake
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    build: { context: ., dockerfile: docker/web.Dockerfile }
+    # Pas de `env_file: [.env]` ici : ce fichier contient les secrets JWT et
+    # le mot de passe PostgreSQL. Next.js n'en a besoin d'aucun — une
+    # exécution de code dans le front (XSS, dépendance compromise...)
+    # livrerait sinon la clé de signature des access tokens, donc
+    # l'usurpation de n'importe quel compte. On liste explicitement les
+    # seules variables dont le démarrage a besoin, constatées en lisant le
+    # code (API_INTERNAL_URL dans src/lib/graphql-client.ts et
+    # src/app/api/auth/refresh/route.ts ; NODE_ENV=production est déjà posé
+    # par docker/web.Dockerfile, répété ici pour rendre la dépendance
+    # explicite plutôt qu'implicite).
+    environment:
+      NODE_ENV: production
+      API_INTERNAL_URL: http://api:4000/graphql
+    depends_on:
+      api: { condition: service_healthy }
+
+  proxy:
+    image: caddy:2-alpine
+    ports: ["3000:3000"]
+    volumes: ["./docker/Caddyfile:/etc/caddy/Caddyfile:ro"]
+    depends_on: [api, web]
+
+volumes:
+  pgdata:
+  redisdata:

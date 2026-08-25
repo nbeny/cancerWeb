@@ -1,0 +1,13 @@
+mutation Login($input: LoginInput!) {
+  login(input: $input) { user { id email name slug globalRole } }
+}
+
+mutation Register($input: RegisterInput!) {
+  register(input: $input) { user { id email name slug globalRole } }
+}
+
+mutation Refresh { refresh { user { id email } } }
+
+mutation Logout { logout }
+
+query Me { me { id email name slug globalRole createdAt } }
