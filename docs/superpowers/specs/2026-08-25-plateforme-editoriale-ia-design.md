@@ -706,17 +706,23 @@ Contrat par fichiers, jamais par parsing de stdout :
 
 ```env
 AI_PROVIDER=cli
+AI_MODEL=opencode/hy3-free
 AI_CLI_COMMAND=opencode
-AI_CLI_ARGS=["run","--prompt-file","{promptFile}","--output","{outputFile}"]
+AI_CLI_ARGS=["run","-m","{model}"]
+AI_CLI_PROMPT_VIA=stdin
 AI_CLI_TIMEOUT_MS=300000
 AI_CLI_MAX_CONCURRENCY=1
 AI_WORKSPACE_DIR=./.ai-workspace
 ```
 
+Contrat validé empiriquement le 2026-08-25 sur `opencode` 1.18.18 (voir `docs/ai-cli-smoke-test.md`) : le CLI n'expose ni `--prompt-file` ni `--output`. Le prompt part sur **stdin**, et c'est **l'agent lui-même** qui écrit `output.md` dans son répertoire de travail, sur instruction explicite du prompt. Stdout n'est conservé que comme log.
+
 Décisions :
 
 - `spawn` avec tableau d'arguments, jamais `shell: true` : le prompt contient du contenu utilisateur, une interpolation dans une chaîne de shell serait une injection de commande.
-- Prompt transmis par fichier et non en argument : Windows limite la ligne de commande à environ 8 Ko, un contexte d'article la dépasse.
+- Prompt transmis par **stdin** et non en argument positionnel : Windows limite la ligne de commande à environ 8 Ko, un contexte d'article la dépasse.
+- Stdout n'est **jamais** parsé comme résultat : il contient des séquences ANSI et le commentaire d'exécution de l'agent (`Write output.md`, `Wrote file successfully`). Seul le fichier écrit fait foi. Le test de fumée confirme que parser stdout aurait été un piège.
+- `--format json` existe et sera évalué au Lot 2 pour les tâches structurées, en complément de la validation zod.
 - Répertoire de travail isolé par job, supprimé après succès, conservé après échec pour investigation.
 - Timeout dur avec `kill` de l'arbre de processus : un CLI attendant une entrée interactive est le mode de panne le plus probable de cette option.
 - `concurrency: 1` sur la file `pipeline` avec ce provider : un agent CLI local n'est pas conçu pour des instances parallèles.
