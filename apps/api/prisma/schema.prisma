@@ -1,0 +1,478 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GlobalRole {
+  ADMIN
+  USER
+}
+
+enum DomainRole {
+  OWNER
+  EDITOR
+  AUTHOR
+  VIEWER
+}
+
+enum Tone {
+  PROFESSIONAL
+  EDUCATIONAL
+  JOURNALISTIC
+  TECHNICAL
+  ACCESSIBLE
+  PROVOCATIVE
+  NEUTRAL
+}
+
+enum ExpertiseLevel {
+  BEGINNER
+  INTERMEDIATE
+  EXPERT
+}
+
+enum SearchIntent {
+  INFORMATIONAL
+  NAVIGATIONAL
+  COMMERCIAL
+  TRANSACTIONAL
+}
+
+enum TopicStatus {
+  IDEA
+  SELECTED
+  REJECTED
+  CONVERTED
+}
+
+enum ArticleStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ClaimStatus {
+  UNVERIFIED
+  VERIFIED
+  QUESTIONABLE
+  CONTRADICTED
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  WAITING_REVIEW
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum StepType {
+  RESEARCH
+  ANALYSIS
+  OUTLINE
+  DRAFT
+  FACT_CHECK
+  SEO
+  QUALITY
+  REVIEW
+  PUBLISH
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  SKIPPED
+  CANCELLED
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum PublicationStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  UNPUBLISHED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  slug         String     @unique
+  bio          String?
+  avatarUrl    String?
+  globalRole   GlobalRole @default(USER)
+  isActive     Boolean    @default(true)
+  memberships  DomainMember[]
+  articles     Article[]        @relation("ArticleAuthor")
+  versions     ArticleVersion[]
+  refreshTokens RefreshToken[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  familyId  String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  createdAt DateTime  @default(now())
+  @@index([userId, expiresAt])
+  @@index([familyId])
+}
+
+model Domain {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  description    String?
+  language       String   @default("fr")
+  country        String?
+  tone           Tone           @default(PROFESSIONAL)
+  expertiseLevel ExpertiseLevel @default(INTERMEDIATE)
+  targetAudience String[]
+  keywords       String[]
+  excludedTopics String[]
+  aiInstructions String?  @db.Text
+  autoPublish    Boolean  @default(false)
+  reviewOutline  Boolean  @default(true)
+  members        DomainMember[]
+  topics         Topic[]
+  articles       Article[]
+  categories     Category[]
+  tags           Tag[]
+  automations    Automation[]
+  targets        PublicationTarget[]
+  media          Media[]
+  runs           PipelineRun[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model DomainMember {
+  id        String     @id @default(cuid())
+  userId    String
+  domainId  String
+  role      DomainRole
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain    Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  @@unique([userId, domainId])
+  @@index([domainId, role])
+}
+
+model Topic {
+  id                  String        @id @default(cuid())
+  domainId            String
+  domain              Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  title               String
+  description         String?       @db.Text
+  keywords            String[]
+  searchIntent        SearchIntent?
+  estimatedDifficulty Int?
+  estimatedInterest   Int?
+  suggestedAngle      String?       @db.Text
+  status              TopicStatus   @default(IDEA)
+  generatedByJobId    String?
+  article             Article?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  @@index([domainId, status, createdAt])
+}
+
+model Article {
+  id             String        @id @default(cuid())
+  domainId       String
+  domain         Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  topicId        String?       @unique
+  topic          Topic?        @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  authorId       String
+  author         User          @relation("ArticleAuthor", fields: [authorId], references: [id])
+  categoryId     String?
+  category       Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  title          String
+  slug           String
+  content        String        @db.Text
+  renderedHtml   String?       @db.Text
+  excerpt        String?
+  coverImageUrl  String?
+  status         ArticleStatus @default(DRAFT)
+  currentVersion Int           @default(1)
+  wordCount      Int           @default(0)
+  latestSeoScore Int?
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+
+  seoTitle          String?
+  metaDescription   String?
+  canonicalUrl      String?
+  focusKeyword      String?
+  secondaryKeywords String[]
+  robotsIndex       Boolean @default(true)
+  robotsFollow      Boolean @default(true)
+
+  versions     ArticleVersion[]
+  seoReports   SeoReport[]
+  claims       Claim[]
+  sources      ArticleSource[]
+  tags         ArticleTag[]
+  publications Publication[]
+  runs         PipelineRun[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([domainId, slug])
+  @@index([domainId, status, publishedAt(sort: Desc)])
+  @@index([status, scheduledAt])
+  @@index([authorId])
+  @@index([domainId, latestSeoScore])
+}
+
+model ArticleVersion {
+  id          String   @id @default(cuid())
+  articleId   String
+  article     Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  version     Int
+  title       String
+  content     String   @db.Text
+  seoSnapshot Json?
+  changeNote  String?
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+  @@unique([articleId, version])
+  @@index([articleId, createdAt(sort: Desc)])
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  domainId    String
+  domain      Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String
+  description String?
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryTree")
+  articles    Article[]
+  @@unique([domainId, slug])
+}
+
+model Tag {
+  id       String       @id @default(cuid())
+  domainId String
+  domain   Domain       @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  name     String
+  slug     String
+  articles ArticleTag[]
+  @@unique([domainId, slug])
+}
+
+model ArticleTag {
+  articleId String
+  tagId     String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@id([articleId, tagId])
+}
+
+model SeoReport {
+  id         String   @id @default(cuid())
+  articleId  String
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  score      Int
+  issues     Json
+  metrics    Json
+  computedAt DateTime @default(now())
+  @@index([articleId, computedAt(sort: Desc)])
+}
+
+model Source {
+  id          String          @id @default(cuid())
+  url         String          @unique
+  urlHash     String          @unique
+  title       String?
+  host        String?
+  author      String?
+  publishedAt DateTime?
+  retrievedAt DateTime        @default(now())
+  content     String?         @db.Text
+  providerKey String
+  articles    ArticleSource[]
+  claims      ClaimSource[]
+  @@index([host])
+}
+
+model ArticleSource {
+  articleId String
+  sourceId  String
+  quote     String?  @db.Text
+  relevance Int?
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  source    Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  @@id([articleId, sourceId])
+}
+
+model Claim {
+  id           String        @id @default(cuid())
+  articleId    String
+  article      Article       @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  content      String        @db.Text
+  excerptStart Int?
+  excerptEnd   Int?
+  status       ClaimStatus   @default(UNVERIFIED)
+  confidence   Float?
+  verifiedById String?
+  verifiedAt   DateTime?
+  sources      ClaimSource[]
+  createdAt    DateTime      @default(now())
+  @@index([articleId, status])
+}
+
+model ClaimSource {
+  claimId  String
+  sourceId String
+  claim    Claim  @relation(fields: [claimId], references: [id], onDelete: Cascade)
+  source   Source @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  @@id([claimId, sourceId])
+}
+
+model PipelineRun {
+  id           String         @id @default(cuid())
+  domainId     String
+  domain       Domain         @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  topicId      String?
+  articleId    String?
+  article      Article?       @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  triggeredBy  String?
+  automationId String?
+  status       RunStatus      @default(PENDING)
+  currentStep  StepType?
+  steps        PipelineStep[]
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  @@index([domainId, status, createdAt(sort: Desc)])
+  @@index([articleId])
+}
+
+model PipelineStep {
+  id          String      @id @default(cuid())
+  runId       String
+  run         PipelineRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  type        StepType
+  order       Int
+  status      StepStatus  @default(PENDING)
+  attempt     Int         @default(0)
+  input       Json?
+  output      Json?
+  error       String?     @db.Text
+  heartbeatAt DateTime?
+  jobs        AIJob[]
+  startedAt   DateTime?
+  completedAt DateTime?
+  @@unique([runId, type, attempt])
+  @@index([status, heartbeatAt])
+}
+
+model AIJob {
+  id               String        @id @default(cuid())
+  stepId           String?
+  step             PipelineStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+  type             String
+  provider         String
+  model            String
+  promptVersion    String
+  status           JobStatus     @default(PENDING)
+  input            Json
+  output           Json?
+  rawOutput        String?       @db.Text
+  error            String?       @db.Text
+  promptTokens     Int?
+  completionTokens Int?
+  costCents        Int?
+  durationMs       Int?
+  correlationId    String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  @@index([status, createdAt(sort: Desc)])
+  @@index([stepId])
+}
+
+model PublicationTarget {
+  id           String        @id @default(cuid())
+  domainId     String
+  domain       Domain        @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  providerKey  String
+  name         String
+  config       Json
+  isActive     Boolean       @default(true)
+  publications Publication[]
+}
+
+model Publication {
+  id          String            @id @default(cuid())
+  articleId   String
+  article     Article           @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  targetId    String
+  target      PublicationTarget @relation(fields: [targetId], references: [id], onDelete: Cascade)
+  status      PublicationStatus @default(PENDING)
+  externalId  String?
+  externalUrl String?
+  error       String?           @db.Text
+  attempts    Int               @default(0)
+  publishedAt DateTime?
+  @@unique([articleId, targetId])
+  @@index([status])
+}
+
+model Automation {
+  id            String    @id @default(cuid())
+  domainId      String
+  domain        Domain    @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  name          String
+  cron          String
+  timezone      String    @default("Europe/Paris")
+  isEnabled     Boolean   @default(false)
+  config        Json
+  lastRunAt     DateTime?
+  nextRunAt     DateTime?
+  lastRunStatus String?
+  @@index([domainId, isEnabled])
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  domainId  String
+  domain    Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  width     Int?
+  height    Int?
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+}

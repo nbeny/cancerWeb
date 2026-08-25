@@ -10,7 +10,15 @@
     "worker": "ts-node src/worker.ts",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "test:int": "jest --config jest.int.config.js --runInBand"
+    "test:int": "jest --config jest.int.config.js --runInBand",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "db:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
+    "db:seed": "dotenv -e ../../.env -- prisma db seed",
+    "db:studio": "dotenv -e ../../.env -- prisma studio",
+    "db:generate": "dotenv -e ../../.env -- prisma generate"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +28,7 @@
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.2.3",
     "@nestjs/platform-express": "^11.2.3",
+    "@prisma/client": "^6.19.3",
     "cookie-parser": "^1.4.7",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -34,7 +43,9 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^26.3.0",
     "@types/supertest": "^7.2.1",
+    "dotenv-cli": "^11.0.0",
     "jest": "^30.4.2",
+    "prisma": "6.19.3",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.12",
     "ts-node": "^10.9.2",
