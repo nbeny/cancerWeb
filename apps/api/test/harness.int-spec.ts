@@ -7,6 +7,16 @@ beforeAll(async () => {
 afterAll(async () => {
   await h.close()
 })
+// Sans ce reset, le test « truncateAll vide réellement les tables » suppose
+// une base vide en entrée — une hypothèse fragile puisque l'ordre
+// d'exécution des fichiers *.int-spec.ts n'est pas garanti alphabétique
+// (séquenceur Jest par défaut) et que plusieurs suites laissent des lignes
+// derrière elles. Tous les autres fichiers d'intégration font ce reset ;
+// celui-ci ne faisait pas exception avant, ce qui le rendait
+// order-dépendant.
+beforeEach(async () => {
+  await h.reset()
+})
 
 describe('harnais d’intégration', () => {
   it('cible bien la base de test et non la base de développement', () => {
