@@ -42,6 +42,16 @@ describe('gestion des erreurs', () => {
     expect(res.body.errors).toBeDefined()
     expect(await h.prisma.user.count()).toBe(0)
   })
+
+  it('renvoie le détail de validation par champ plutôt que "Bad Request Exception"', async () => {
+    const res = await h.gql(
+      `mutation ($input: RegisterInput!) { register(input: $input) { user { id } } }`,
+      { input: { email: 'alpha@example.com', password: 'trop-court', name: 'Alpha' } },
+    )
+    const message = res.body.errors?.[0]?.message
+    expect(message).toContain('12 caractères')
+    expect(message).not.toBe('Bad Request Exception')
+  })
 })
 
 describe('correlation ID', () => {

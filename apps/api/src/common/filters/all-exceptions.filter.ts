@@ -19,7 +19,20 @@ export class AllExceptionsFilter implements GqlExceptionFilter {
   catch(exception: unknown, _host: ArgumentsHost): GraphQLError {
     if (exception instanceof HttpException) {
       const status = exception.getStatus()
-      return new GraphQLError(exception.message, {
+      // `exception.message` vaut littéralement "Bad Request Exception" pour
+      // une BadRequestException levée par le ValidationPipe : le détail par
+      // champ (les messages `class-validator`, ex. "Le mot de passe doit
+      // faire au moins 12 caractères") vit dans `getResponse().message` et
+      // n'était jamais lu. Les messages `class-validator` ne réinjectent
+      // jamais la valeur saisie par le client (ils décrivent la contrainte
+      // violée, pas la donnée), donc les exposer ici ne fait pas fuiter de
+      // saisie utilisateur.
+      const response = exception.getResponse()
+      const message =
+        typeof response === 'object' && response !== null && 'message' in response
+          ? [(response as { message: unknown }).message].flat().join(' · ')
+          : exception.message
+      return new GraphQLError(message, {
         extensions: { code: CODE_BY_STATUS[status] ?? 'INTERNAL' },
       })
     }
