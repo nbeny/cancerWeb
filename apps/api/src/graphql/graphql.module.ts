@@ -29,7 +29,16 @@ class RootResolver {
       driver: ApolloDriver,
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
-        autoSchemaFile: join(process.cwd(), '../../packages/graphql/schema.graphql'),
+        // En production, l'image d'exécution ne contient pas packages/ (seul
+        // apps/api en est extrait) : écrire le SDL sur disque ferait planter
+        // le conteneur au démarrage. NestJS sait garder le schéma en mémoire
+        // (autoSchemaFile: true) — rien n'est alors écrit sur disque. Hors
+        // production (dev, test), on continue à régénérer le fichier : c'est
+        // ce mécanisme que la CI utilise pour détecter un schéma périmé.
+        autoSchemaFile:
+          config.get('NODE_ENV') === 'production'
+            ? true
+            : join(process.cwd(), '../../packages/graphql/schema.graphql'),
         sortSchema: true,
         playground: false,
         introspection: config.get('NODE_ENV') !== 'production',
