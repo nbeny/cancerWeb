@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@cancerweb/graphql": "workspace:^",
+    "@cancerweb/validation": "workspace:^",
     "@hookform/resolvers": "^5.9.1",
     "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-dropdown-menu": "^2.1.24",
