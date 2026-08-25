@@ -591,7 +591,7 @@ Pagination par offset (`page: {limit, offset}`) avec `totalCount`, car `/article
 
 ### Garde-fous
 
-- `graphql-depth-limit` = 8 et `graphql-query-complexity` = 1000, appliqués avant exécution.
+- `graphql-depth-limit` = 8 et `graphql-query-complexity` = 1000, appliqués avant exécution. `graphql-depth-limit` exempte par conception les champs préfixés `__` : l'introspection n'est donc jamais bornée en profondeur, ce qui préserve les outils standard. C'est la complexité, et la désactivation de l'introspection en production, qui couvrent ce cas.
 - Introspection et playground désactivés en production.
 - `class-validator` sur chaque Input.
 - Le `domainId` fourni par le client n'est jamais fait confiance : le service intersecte systématiquement avec les memberships de l'utilisateur.
