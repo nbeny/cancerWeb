@@ -1,23 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GraphQLClient } from 'graphql-request'
 import { getSdk } from '@cancerweb/graphql'
+import { safeNext } from '@/lib/safe-next'
 
 const INTERNAL_URL = process.env.API_INTERNAL_URL ?? 'http://localhost:4000/graphql'
 
-/**
- * `next` vient d'un paramètre de requête contrôlé par le client. Sans validation,
- * `next = "https://evil.example"` ou `next = "//evil.example"` produirait une
- * redirection ouverte (open redirect) : on n'accepte donc qu'un chemin interne
- * qui commence par un seul `/` (jamais `//`, qui est interprété comme
- * protocol-relative par le navigateur).
- */
-function safeNext(next: string | null): string {
-  if (next && next.startsWith('/') && !next.startsWith('//')) return next
-  return '/dashboard'
-}
-
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const next = safeNext(request.nextUrl.searchParams.get('next'))
+  const next = safeNext(request.nextUrl.searchParams.get('next'), request.url)
   const cookieHeader = request.headers.get('cookie') ?? ''
   const login = new URL('/auth/login', request.url)
 
