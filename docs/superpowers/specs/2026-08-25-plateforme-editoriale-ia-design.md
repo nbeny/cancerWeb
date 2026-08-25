@@ -821,6 +821,8 @@ Tests d'autorisation obligatoires par ressource : un `AUTHOR` du domaine A accé
 - `helmet` et CSP sur le blog public.
 - Logs structurés sans mot de passe ni token, avec `correlationId`.
 
+**Point vérifié en implémentation, contre-intuitif :** la fuite de secrets par les logs ne vient pas de la requête mais de la **réponse**. `pino-http` ne journalise pas `req.body` par défaut, donc masquer `req.body.…password` ne protège rien ; en revanche il journalise les en-têtes de réponse, dont `Set-Cookie`, qui contient le JWT d'accès et le refresh token en clair. `res.headers["set-cookie"]` doit donc figurer dans la liste `redact`, sans quoi chaque connexion écrit de quoi usurper le compte dans les logs. Couvert par un test qui capture la sortie réelle du logger et vérifie d'abord que la ligne de log existe, avant d'affirmer que le secret en est absent.
+
 ---
 
 ## 11. Docker et environnements
