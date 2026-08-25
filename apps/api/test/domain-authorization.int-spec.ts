@@ -1,4 +1,4 @@
-import { DomainRole } from '@prisma/client'
+import { DomainRole, GlobalRole } from '@prisma/client'
 import { createHarness, Harness } from './app-harness'
 
 let h: Harness
@@ -82,5 +82,27 @@ describe('autorisation par domaine', () => {
     const res = await h.gql(DELETE, { id: created.body.data.createDomain.id }, alice.cookies)
     expect(res.body.data.deleteDomain).toBe(true)
     expect(await h.prisma.domain.count()).toBe(0)
+  })
+
+  // Un ADMIN global n'a pas de bypass implicite sur les domaines : les deux
+  // couches d'autorisation (ce guard et DomainsService) doivent s'accorder
+  // sur « refus sauf adhésion ». Un ADMIN qui a besoin d'intervenir sur un
+  // domaine doit s'y ajouter explicitement comme membre.
+  it('interdit à un ADMIN global non-membre d’accéder à un domaine tiers', async () => {
+    const alice = await signUp('alice@example.com')
+    const admin = await signUp('admin@example.com')
+    await h.prisma.user.update({ where: { id: admin.userId }, data: { globalRole: GlobalRole.ADMIN } })
+
+    const created = await h.gql(CREATE, { input: { name: 'Domaine Alice' } }, alice.cookies)
+    const domainId = created.body.data.createDomain.id
+
+    const updateRes = await h.gql(UPDATE, { id: domainId, input: { name: 'Piraté par ADMIN' } }, admin.cookies)
+    expect(errorCode(updateRes.body)).toBe('NOT_FOUND')
+
+    const deleteRes = await h.gql(DELETE, { id: domainId }, admin.cookies)
+    expect(errorCode(deleteRes.body)).toBe('NOT_FOUND')
+
+    const unchanged = await h.prisma.domain.findUnique({ where: { id: domainId } })
+    expect(unchanged?.name).toBe('Domaine Alice')
   })
 })

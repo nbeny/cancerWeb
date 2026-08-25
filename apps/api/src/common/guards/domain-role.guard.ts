@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { GqlExecutionContext } from '@nestjs/graphql'
-import { DomainRole, GlobalRole, User } from '@prisma/client'
+import { DomainRole, User } from '@prisma/client'
 import { PrismaService } from '../../prisma/prisma.service'
 import { DOMAIN_ROLE_KEY } from '../decorators/require-domain-role.decorator'
 
@@ -30,7 +30,13 @@ export class DomainRoleGuard implements CanActivate {
     const gqlCtx = GqlExecutionContext.create(context)
     const user = gqlCtx.getContext().req.user as User | undefined
     if (!user) throw new ForbiddenException('Authentification requise')
-    if (user.globalRole === GlobalRole.ADMIN) return true
+    // Pas de bypass pour GlobalRole.ADMIN : DomainsService.findForUser/remove
+    // exigent une adhésion, donc un ADMIN non-membre franchissait ce guard
+    // pour recevoir NOT_FOUND juste après — deux couches d'autorisation qui
+    // se contredisaient, aucune testée pour ce rôle. Les deux s'alignent
+    // maintenant sur « refus sauf adhésion ». Un administrateur qui doit
+    // intervenir sur un domaine s'y ajoute explicitement comme membre :
+    // action tracée, plutôt qu'un privilège implicite.
 
     const args = gqlCtx.getArgs<Record<string, unknown>>()
     const domainId = (args.domainId ?? args.id) as string | undefined
