@@ -1,9 +1,11 @@
 import request from 'supertest'
 import { Writable } from 'node:stream'
 import { PARAMS_PROVIDER_TOKEN } from 'nestjs-pino'
+import { Prisma } from '@prisma/client'
 import { createHarness, Harness } from './app-harness'
 import { CORRELATION_HEADER } from '../src/common/middleware/correlation-id.middleware'
 import { createPinoHttpOptions } from '../src/common/logging/pino-http-options'
+import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter'
 
 let h: Harness
 beforeAll(async () => { h = await createHarness() })
@@ -19,18 +21,34 @@ describe('gestion des erreurs', () => {
     expect(errorCode(res.body)).toBe('UNAUTHENTICATED')
   })
 
-  it('ne fuit jamais de détail interne Prisma au client', async () => {
-    const reg = await h.gql(
-      `mutation ($input: RegisterInput!) { register(input: $input) { user { id } } }`,
-      { input: { email: 'a@example.com', password: 'Sup3r-Secret!', name: 'Alpha' } },
-    )
-    const cookies = reg.headers['set-cookie'] as unknown as string[]
-    const res = await h.gql(
-      `mutation ($id: ID!) { deleteDomain(id: $id) }`,
-      { id: 'identifiant-inexistant' },
-      cookies,
-    )
-    const serialized = JSON.stringify(res.body)
+  // `deleteDomain` avec un identifiant inexistant ne touche jamais Prisma :
+  // `DomainRoleGuard` lève sa propre NotFoundException avant tout accès à la
+  // base. La branche `PrismaClientKnownRequestError` du filtre restait donc
+  // totalement non couverte — on pourrait la remplacer par
+  // `return new GraphQLError(String(exception))` et cette suite resterait
+  // verte. On provoque ici une vraie violation de contrainte unique via
+  // `h.prisma` directement (deux créations d'utilisateur avec le même
+  // email, en contournant la vérification applicative de `register`), pour
+  // obtenir une authentique `PrismaClientKnownRequestError` et vérifier que
+  // le filtre la traduit sans fuite plutôt que de simplement l'inspecter.
+  it('ne fuit jamais de détail interne Prisma au client lors d’un vrai conflit de contrainte unique', async () => {
+    const data = { email: 'dup@example.com', name: 'Dup', slug: 'dup', passwordHash: 'x' }
+    await h.prisma.user.create({ data })
+
+    let prismaError: unknown
+    try {
+      await h.prisma.user.create({ data: { ...data, slug: 'dup-2' } })
+    } catch (e) {
+      prismaError = e
+    }
+    // Preuve qu'un vrai conflit Prisma a bien eu lieu (sinon les assertions
+    // ci-dessous seraient vides de sens).
+    expect(prismaError).toBeInstanceOf(Prisma.PrismaClientKnownRequestError)
+
+    const gqlError = new AllExceptionsFilter().catch(prismaError, {} as never)
+
+    expect(gqlError.extensions?.code).toBe('CONFLICT')
+    const serialized = JSON.stringify({ message: gqlError.message, extensions: gqlError.extensions })
     expect(serialized).not.toMatch(/prisma|PrismaClient|P20\d\d/i)
   })
 
