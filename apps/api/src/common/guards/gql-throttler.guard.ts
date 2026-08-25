@@ -13,4 +13,15 @@ export class GqlThrottlerGuard extends ThrottlerGuard {
     const gqlCtx = GqlExecutionContext.create(context).getContext()
     return { req: gqlCtx.req, res: gqlCtx.res }
   }
+
+  // Par défaut, ThrottlerGuard suit uniquement `req.ip`. Avec `trust proxy`
+  // correctement configuré (voir main.ts), `req.ip` reflète bien le client
+  // final, mais un compte compromis pourrait pulvériser des requêtes depuis
+  // de nombreuses IP pour contourner une limite purement par adresse.
+  // Quand l'utilisateur est authentifié (req.user posé par GqlAuthGuard,
+  // qui s'exécute avant ce guard dans la liste des APP_GUARD), on suit son
+  // identité plutôt que son IP ; sinon on retombe sur l'IP.
+  protected override async getTracker(req: Record<string, any>): Promise<string> {
+    return req.user?.id ? `user:${req.user.id}` : `ip:${req.ip}`
+  }
 }

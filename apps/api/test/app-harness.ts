@@ -1,4 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common'
+import { NestExpressApplication } from '@nestjs/platform-express'
 import { Test, TestingModuleBuilder } from '@nestjs/testing'
 import cookieParser from 'cookie-parser'
 import helmet from 'helmet'
@@ -20,7 +21,10 @@ export async function createHarness(
   let builder = Test.createTestingModule({ imports: [AppModule] })
   if (configure) builder = configure(builder)
   const moduleRef = await builder.compile()
-  const app = moduleRef.createNestApplication()
+  const app = moduleRef.createNestApplication<NestExpressApplication>()
+  // Doit répliquer main.ts : sinon les tests valident une configuration de
+  // confiance du proxy différente de celle réellement déployée derrière Caddy.
+  app.set('trust proxy', 1)
   app.use(cookieParser())
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))

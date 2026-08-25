@@ -29,4 +29,23 @@ describe('rate limiting GraphQL', () => {
     const blocked = await h.gql(`{ serverTime }`)
     expect(errorCode(blocked.body)).toBe('RATE_LIMITED')
   })
+
+  // Sans `trust proxy` côté Express, `req.ip` vaut toujours l'IP du pair
+  // TCP direct (ici le processus de test), quelle que soit la valeur de
+  // `X-Forwarded-For` : deux « clients » distincts finiraient sur la même
+  // clé de quota. Avec `trust proxy` actif, chaque IP forwardée a son
+  // propre compteur.
+  it('sépare les compteurs par IP quand des clients distincts sont identifiés via X-Forwarded-For', async () => {
+    for (let i = 0; i < 3; i++) {
+      const res = await h.gql(`{ serverTime }`).set('X-Forwarded-For', '203.0.113.10')
+      expect(res.body.errors).toBeUndefined()
+    }
+    const blockedA = await h.gql(`{ serverTime }`).set('X-Forwarded-For', '203.0.113.10')
+    expect(errorCode(blockedA.body)).toBe('RATE_LIMITED')
+
+    // Un second client, avec une IP différente, ne doit pas hériter du
+    // quota épuisé du premier.
+    const resB = await h.gql(`{ serverTime }`).set('X-Forwarded-For', '203.0.113.20')
+    expect(resB.body.errors).toBeUndefined()
+  })
 })

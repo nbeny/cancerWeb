@@ -1,3 +1,14 @@
+{
+	# Caddy est le seul proxy en amont de l'API/du web : aucune requête
+	# n'atteint ce serveur via un autre relais. On le rend explicite plutôt
+	# que de laisser la valeur par défaut (aucun proxy de confiance déclaré,
+	# ce qui laisse planer l'ambiguïté sur ce que `X-Forwarded-For` peut ou
+	# ne peut pas contenir en amont de Caddy).
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 :3000 {
 	encode gzip
 
