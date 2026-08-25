@@ -1,6 +1,7 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common'
 import { Test, TestingModuleBuilder } from '@nestjs/testing'
 import cookieParser from 'cookie-parser'
+import helmet from 'helmet'
 import request from 'supertest'
 import { AppModule } from '../src/app.module'
 import { PrismaService } from '../src/prisma/prisma.service'
@@ -21,6 +22,7 @@ export async function createHarness(
   const moduleRef = await builder.compile()
   const app = moduleRef.createNestApplication()
   app.use(cookieParser())
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
   await app.init()
 

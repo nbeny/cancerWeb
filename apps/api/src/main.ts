@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
 import cookieParser from 'cookie-parser'
+import helmet from 'helmet'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
 import { parseEnv } from './config/env'
@@ -15,6 +16,9 @@ async function bootstrap() {
   // bord dotenv sur process.env) avant que parseEnv ne soit relu ici.
   const env = parseEnv(process.env)
   app.use(cookieParser())
+  // CSP désactivée : l'API ne sert pas de HTML. Elle sera définie côté
+  // Next.js pour le blog public (Lot 3).
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
   app.getHttpAdapter().getInstance().get('/health', (_req: unknown, res: any) =>
     res.json({ status: 'ok' }),

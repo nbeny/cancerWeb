@@ -63,6 +63,15 @@ describe('correlation ID', () => {
   })
 })
 
+describe('en-têtes de sécurité (helmet)', () => {
+  it('pose les en-têtes de durcissement HTTP sans CSP (API sans HTML)', async () => {
+    const res = await h.gql(`{ serverTime }`)
+    expect(res.headers['x-content-type-options']).toBe('nosniff')
+    expect(res.headers['x-dns-prefetch-control']).toBe('off')
+    expect(res.headers['content-security-policy']).toBeUndefined()
+  })
+})
+
 // Le logger structuré (pino-http) écrit une ligne JSON par requête. Par
 // défaut, pino écrit directement sur le descripteur de fichier stdout (via
 // sonic-boom), pas via `process.stdout.write` — un monkey-patch de
