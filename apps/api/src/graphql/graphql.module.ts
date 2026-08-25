@@ -62,7 +62,12 @@ class RootResolver {
                     variables: request.variables,
                     estimators: [simpleEstimator({ defaultComplexity: 1 })],
                   })
-                  const max = Number(process.env.GRAPHQL_MAX_COMPLEXITY ?? 1000)
+                  // Lu via ConfigService (déjà validé par parseEnv/zod), comme
+                  // GRAPHQL_MAX_DEPTH ci-dessus — pas `Number(process.env...)`,
+                  // qui court-circuite cette validation : une valeur non
+                  // numérique y donnerait NaN, et `complexity > NaN` est
+                  // toujours faux, désactivant la limite sans erreur.
+                  const max = config.get('GRAPHQL_MAX_COMPLEXITY')
                   if (complexity > max) {
                     throw new GraphQLError(`Requête trop complexe : ${complexity} (maximum ${max})`, {
                       extensions: { code: 'QUERY_TOO_COMPLEX' },
