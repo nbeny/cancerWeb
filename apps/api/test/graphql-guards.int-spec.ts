@@ -26,6 +26,7 @@ describe('garde-fous GraphQL', () => {
   it('rejette une requête trop complexe', async () => {
     const res = await h.gql(wideQuery(1001))
     expect(res.body.errors?.[0]?.message).toMatch(/complexe|complex/i)
+    expect(res.body.errors?.[0]?.code).toBe('QUERY_TOO_COMPLEX')
   })
 
   it('accepte une requête sous le seuil de complexité', async () => {

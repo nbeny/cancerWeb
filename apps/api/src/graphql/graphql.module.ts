@@ -4,6 +4,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo'
 import { ConfigService } from '@nestjs/config'
 import { Query, Resolver } from '@nestjs/graphql'
 import depthLimit from 'graphql-depth-limit'
+import { GraphQLError } from 'graphql'
 import { join } from 'node:path'
 import type { Request, Response } from 'express'
 import { Env } from '../config/env'
@@ -54,7 +55,9 @@ class RootResolver {
                   })
                   const max = Number(process.env.GRAPHQL_MAX_COMPLEXITY ?? 1000)
                   if (complexity > max) {
-                    throw new Error(`Requête trop complexe : ${complexity} (maximum ${max})`)
+                    throw new GraphQLError(`Requête trop complexe : ${complexity} (maximum ${max})`, {
+                      extensions: { code: 'QUERY_TOO_COMPLEX' },
+                    })
                   }
                 },
               }
