@@ -1,5 +1,5 @@
 import { Field, ID, InputType, ObjectType, registerEnumType } from '@nestjs/graphql'
-import { ArrayMaxSize, IsBoolean, IsEnum, IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator'
+import { ArrayMaxSize, IsBoolean, IsEnum, IsIn, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator'
 import { ExpertiseLevel, Tone } from '@prisma/client'
 import { Paginated } from '../common/dto/page.input'
 
@@ -45,17 +45,36 @@ export class CreateDomainInput {
   @Field({ nullable: true }) @IsOptional() @IsString() @MaxLength(4000) aiInstructions?: string
 }
 
+// `UpdateDomainInput` a des champs `nullable: true` côté GraphQL pour que le
+// client puisse omettre ceux qu'il ne modifie pas (input partiel). Mais
+// « omis » et « explicitement null » sont deux choses différentes : seules
+// `description`, `country` et `aiInstructions` correspondent à des colonnes
+// nullables en base (voir schema.prisma) et peuvent légitimement être
+// effacées avec `null`. Pour elles, `@IsOptional()` est correct : il laisse
+// passer `undefined` (champ omis) et `null` (effacement voulu) sans
+// validation supplémentaire.
+//
+// Pour les autres champs (colonnes `NOT NULL`), `@IsOptional()` aurait le
+// même effet indésirable : il traiterait `null` comme "rien à valider" et
+// laisserait la valeur atteindre Prisma, qui rejette avec une erreur de
+// contrainte non gérée (500 + bruit de log). On utilise donc
+// `@ValidateIf` pour ne sauter la validation que sur `undefined` : un
+// `null` explicite est alors soumis aux validateurs de type
+// (`@IsString`, `@IsEnum`, `@ArrayMaxSize`, `@IsBoolean`, ...), qui le
+// rejettent proprement en `VALIDATION_FAILED`.
+const skipIfOmitted = (_: unknown, value: unknown): boolean => value !== undefined
+
 @InputType()
 export class UpdateDomainInput {
-  @Field({ nullable: true }) @IsOptional() @IsString() @Length(2, 80) name?: string
+  @Field({ nullable: true }) @ValidateIf(skipIfOmitted) @IsString() @Length(2, 80) name?: string
   @Field({ nullable: true }) @IsOptional() @IsString() @MaxLength(500) description?: string
-  @Field({ nullable: true }) @IsOptional() @IsIn(SUPPORTED_LANGUAGES as unknown as string[]) language?: string
-  @Field(() => Tone, { nullable: true }) @IsOptional() @IsEnum(Tone) tone?: Tone
-  @Field(() => ExpertiseLevel, { nullable: true }) @IsOptional() @IsEnum(ExpertiseLevel) expertiseLevel?: ExpertiseLevel
-  @Field(() => [String], { nullable: true }) @IsOptional() @ArrayMaxSize(20) targetAudience?: string[]
-  @Field(() => [String], { nullable: true }) @IsOptional() @ArrayMaxSize(50) keywords?: string[]
-  @Field(() => [String], { nullable: true }) @IsOptional() @ArrayMaxSize(50) excludedTopics?: string[]
+  @Field({ nullable: true }) @ValidateIf(skipIfOmitted) @IsIn(SUPPORTED_LANGUAGES as unknown as string[]) language?: string
+  @Field(() => Tone, { nullable: true }) @ValidateIf(skipIfOmitted) @IsEnum(Tone) tone?: Tone
+  @Field(() => ExpertiseLevel, { nullable: true }) @ValidateIf(skipIfOmitted) @IsEnum(ExpertiseLevel) expertiseLevel?: ExpertiseLevel
+  @Field(() => [String], { nullable: true }) @ValidateIf(skipIfOmitted) @ArrayMaxSize(20) targetAudience?: string[]
+  @Field(() => [String], { nullable: true }) @ValidateIf(skipIfOmitted) @ArrayMaxSize(50) keywords?: string[]
+  @Field(() => [String], { nullable: true }) @ValidateIf(skipIfOmitted) @ArrayMaxSize(50) excludedTopics?: string[]
   @Field({ nullable: true }) @IsOptional() @IsString() @MaxLength(4000) aiInstructions?: string
-  @Field({ nullable: true }) @IsOptional() @IsBoolean() autoPublish?: boolean
-  @Field({ nullable: true }) @IsOptional() @IsBoolean() reviewOutline?: boolean
+  @Field({ nullable: true }) @ValidateIf(skipIfOmitted) @IsBoolean() autoPublish?: boolean
+  @Field({ nullable: true }) @ValidateIf(skipIfOmitted) @IsBoolean() reviewOutline?: boolean
 }
