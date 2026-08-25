@@ -795,8 +795,8 @@ Deux garde-fous non négociables :
 
 | Niveau | Outil | Périmètre |
 |---|---|---|
-| Unitaire | Vitest | `markdown/`, `seo/` (fonctions pures), services avec Prisma mocké, `StepHandler.buildInput`, validation zod des sorties IA |
-| Intégration | Jest + PostgreSQL jetable (Testcontainers) + `FakeAIProvider` | resolvers GraphQL de bout en bout : auth, RBAC par domaine, pipeline complet, transitions de statut, publication |
+| Unitaire | Jest (api) / Vitest (web) | `markdown/`, `seo/` (fonctions pures), services avec Prisma mocké, `StepHandler.buildInput`, validation zod des sorties IA |
+| Intégration | Jest + supertest + base `postgres-test` du compose + `FakeAIProvider` | resolvers GraphQL de bout en bout : auth, RBAC par domaine, pipeline complet, transitions de statut, publication |
 | E2E | Playwright | login → dashboard → création de domaine → génération de topics → sélection → outline → article → review → publication |
 
 Deux règles fermes :
