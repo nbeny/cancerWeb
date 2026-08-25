@@ -7,11 +7,15 @@ import depthLimit from 'graphql-depth-limit'
 import { join } from 'node:path'
 import type { Request, Response } from 'express'
 import { Env } from '../config/env'
+import { Public } from '../common/decorators/public.decorator'
 
 export interface GqlContext { req: Request; res: Response }
 
 @Resolver()
 class RootResolver {
+  // Sonde de disponibilité : doit rester accessible sans authentification,
+  // y compris maintenant que le guard global protège tout par défaut.
+  @Public()
   @Query(() => String, { description: 'Horodatage serveur — sonde de disponibilité.' })
   serverTime(): string {
     return new Date().toISOString()
