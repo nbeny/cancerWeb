@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  verify:
+    name: Types, lint, tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: cancerweb
+          POSTGRES_PASSWORD: cancerweb
+          POSTGRES_DB: cancerweb_test
+        # 5434 côté hôte pour correspondre à apps/api/.env.test, que
+        # `pretest:int` charge tel quel.
+        ports: ['5434:5432']
+        options: >-
+          --health-cmd "pg_isready -U cancerweb -d cancerweb_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://cancerweb:cancerweb@127.0.0.1:5434/cancerweb_test?schema=public
+      REDIS_URL: redis://127.0.0.1:6379
+      PUBLIC_ORIGIN: http://localhost:3000
+      JWT_ACCESS_SECRET: ci-access-secret-at-least-32-characters
+      JWT_REFRESH_SECRET: ci-refresh-secret-at-least-32-characters
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        # 24 pour coller à la machine de développement : le workspace exige
+        # >=22, mais valider sur une version différente de celle utilisée au
+        # quotidien laisserait passer des écarts de comportement.
+        with: { node-version: 24, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cancerweb/api prisma:generate
+      - run: pnpm --filter @cancerweb/api prisma:deploy
+
+      - run: pnpm --filter @cancerweb/api build
+
+      # Le SDK typé consommé par le front est un artefact généré et committé :
+      # on le régénère puis on vérifie qu'il n'a pas bougé. Sans cette
+      # vérification, un changement de schéma non répercuté ne casserait le
+      # build du front qu'au déploiement suivant.
+      - run: pnpm codegen
+      - name: Vérifier que le SDK GraphQL committé est à jour
+        run: git diff --exit-code packages/graphql/src/generated.ts
+
+      - run: pnpm typecheck
+
+      # Attention : `pnpm -r lint` ne couvre aujourd'hui que apps/web, seul
+      # package doté d'un script `lint`. Voir le suivi dans le plan du Lot 0.
+      - run: pnpm lint
+
+      - run: pnpm --filter @cancerweb/api test
+      - run: pnpm --filter @cancerweb/api test:int
+      - run: pnpm --filter @cancerweb/web test
+
+      # Le typecheck ne remplace pas le build : une route mal typée, un import
+      # invalide ou une frontière serveur/client incorrecte ne se voient qu'ici.
+      # `--webpack` (présent dans le script) est un contournement propre à la
+      # machine Windows de développement ; il fonctionne aussi sous Linux.
+      - run: pnpm --filter @cancerweb/web build
+
+      # DOIT venir après test:int. `autoSchemaFile` écrit le SDL au démarrage
+      # de l'application, pas à la compilation : seul un bootstrap réel le
+      # régénère, et test:int en fait un. Placée plus haut, cette vérification
+      # comparerait un fichier que rien n'a réécrit et serait verte même avec
+      # un schéma périmé.
+      - name: Vérifier que le schéma GraphQL committé est à jour
+        run: git diff --exit-code packages/graphql/schema.graphql
+
+  e2e:
+    name: Parcours end-to-end
+    runs-on: ubuntu-latest
+    needs: verify
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cancerweb/web exec playwright install --with-deps chromium
+
+      - name: Préparer l'environnement
+        run: cp .env.example .env
+
+      - name: Démarrer la pile complète
+        run: docker compose up -d --build proxy api web worker postgres redis
+
+      - name: Attendre que le proxy réponde
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3000/health > /dev/null; then
+              echo "Pile prête après ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "La pile n'a pas répondu en 60s"; docker compose logs --tail 50; exit 1
+
+      - run: pnpm --filter @cancerweb/web e2e
+
+      - name: Journaux en cas d'échec
+        if: failure()
+        run: docker compose logs --tail 200
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: apps/web/test-results/
+          retention-days: 7
