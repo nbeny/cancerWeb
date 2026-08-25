@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { parseEnv } from './config/env'
 import { PrismaModule } from './prisma/prisma.module'
+import { GraphQLModule } from './graphql/graphql.module'
 
 // Le monorepo n'a qu'un seul .env, à la racine (voir docker-compose.yml).
 // __dirname pointe vers apps/api/src (ts-node) ou apps/api/dist (build) :
@@ -15,6 +16,7 @@ import { PrismaModule } from './prisma/prisma.module'
       envFilePath: resolve(__dirname, '../../../.env'),
     }),
     PrismaModule,
+    GraphQLModule,
   ],
 })
 export class AppModule {}
