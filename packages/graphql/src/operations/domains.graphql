@@ -1,0 +1,23 @@
+fragment DomainFields on Domain {
+  id name slug description language country tone expertiseLevel
+  targetAudience keywords excludedTopics aiInstructions
+  autoPublish reviewOutline createdAt updatedAt
+}
+
+query Domains($page: PageInput) {
+  domains(page: $page) { items { ...DomainFields } totalCount }
+}
+
+query DomainById($id: ID!) {
+  domain(id: $id) { ...DomainFields }
+}
+
+mutation CreateDomain($input: CreateDomainInput!) {
+  createDomain(input: $input) { ...DomainFields }
+}
+
+mutation UpdateDomain($id: ID!, $input: UpdateDomainInput!) {
+  updateDomain(id: $id, input: $input) { ...DomainFields }
+}
+
+mutation DeleteDomain($id: ID!) { deleteDomain(id: $id) }
