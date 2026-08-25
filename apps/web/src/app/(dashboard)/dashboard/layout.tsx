@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { serverSdk } from '@/lib/graphql-client'
+import { graphqlErrorCode } from '@/lib/graphql-error'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Header } from '@/components/dashboard/header'
 import { Breadcrumbs } from '@/components/dashboard/breadcrumbs'
@@ -14,8 +15,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   try {
     const { data } = await serverSdk(header).Me()
     userName = data.me.name
-  } catch {
-    redirect('/auth/login')
+  } catch (error) {
+    // Seul un code UNAUTHENTICATED signifie réellement « pas connecté » (ou
+    // session expirée) : c'est le seul cas où rediriger silencieusement vers
+    // /auth/login est correct. Toute autre panne (API arrêtée, timeout,
+    // erreur de schéma...) doit remonter à error.tsx : éjecter l'utilisateur
+    // vers le login masquerait un incident réel derrière un écran de
+    // connexion trompeur.
+    if (graphqlErrorCode(error) === 'UNAUTHENTICATED') {
+      redirect('/auth/login')
+    }
+    throw error
   }
 
   return (
