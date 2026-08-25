@@ -53,4 +53,25 @@ describe('rotation du refresh token', () => {
     const res = await h.gql(REFRESH, {}, ['refresh=' + 'f'.repeat(64)])
     expect(res.body.errors).toBeDefined()
   })
+
+  it('une seule rotation réussit quand N requêtes concurrentes utilisent le même token', async () => {
+    const reg = await h.gql(REGISTER, { input })
+    const old = refreshCookie(reg.headers['set-cookie'] as unknown as string[])
+
+    const N = 5
+    const results = await Promise.all(Array.from({ length: N }, () => h.gql(REFRESH, {}, [old])))
+
+    const successes = results.filter((r) => r.body.data?.refresh)
+    expect(successes).toHaveLength(1)
+
+    const distinctTokens = new Set(
+      successes.map((r) => refreshCookie(r.headers['set-cookie'] as unknown as string[])),
+    )
+    expect(distinctTokens.size).toBe(1)
+
+    // La détection de rejeu doit avoir révoqué toute la famille, y compris le
+    // token frais émis par la seule rotation gagnante.
+    const active = await h.prisma.refreshToken.count({ where: { revokedAt: null } })
+    expect(active).toBe(0)
+  })
 })

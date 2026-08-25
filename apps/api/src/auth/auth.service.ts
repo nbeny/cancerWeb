@@ -65,7 +65,22 @@ export class AuthService {
 
     if (stored.expiresAt < new Date() || !stored.user.isActive) throw invalid
 
-    await this.prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } })
+    // Révocation conditionnelle et atomique : le `where` inclut `revokedAt: null`,
+    // donc PostgreSQL fusionne le test-et-écriture en une seule opération. Si deux
+    // requêtes concurrentes portent le même token, une seule obtient `count === 1` ;
+    // l'autre doit traiter la situation comme un rejeu (le token a été consommé
+    // entre sa lecture et son écriture) plutôt que d'émettre une session valide.
+    const { count } = await this.prisma.refreshToken.updateMany({
+      where: { id: stored.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+    if (count === 0) {
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: stored.familyId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      })
+      throw invalid
+    }
     return this.issueSession(stored.user, stored.familyId, userAgent)
   }
 
