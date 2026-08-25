@@ -1,5 +1,5 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common'
-import { Test } from '@nestjs/testing'
+import { Test, TestingModuleBuilder } from '@nestjs/testing'
 import cookieParser from 'cookie-parser'
 import request from 'supertest'
 import { AppModule } from '../src/app.module'
@@ -13,8 +13,12 @@ export interface Harness {
   reset: () => Promise<void>
 }
 
-export async function createHarness(): Promise<Harness> {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile()
+export async function createHarness(
+  configure?: (builder: TestingModuleBuilder) => TestingModuleBuilder,
+): Promise<Harness> {
+  let builder = Test.createTestingModule({ imports: [AppModule] })
+  if (configure) builder = configure(builder)
+  const moduleRef = await builder.compile()
   const app = moduleRef.createNestApplication()
   app.use(cookieParser())
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
