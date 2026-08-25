@@ -6,10 +6,53 @@ type AuthPayload {
   user: User!
 }
 
+input CreateDomainInput {
+  aiInstructions: String
+  country: String
+  description: String
+  excludedTopics: [String!]! = []
+  expertiseLevel: ExpertiseLevel! = INTERMEDIATE
+  keywords: [String!]! = []
+  language: String! = "fr"
+  name: String!
+  targetAudience: [String!]! = []
+  tone: Tone! = PROFESSIONAL
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
 scalar DateTime
+
+type Domain {
+  aiInstructions: String
+  autoPublish: Boolean!
+  country: String
+  createdAt: DateTime!
+  description: String
+  excludedTopics: [String!]!
+  expertiseLevel: ExpertiseLevel!
+  id: ID!
+  keywords: [String!]!
+  language: String!
+  name: String!
+  reviewOutline: Boolean!
+  slug: String!
+  targetAudience: [String!]!
+  tone: Tone!
+  updatedAt: DateTime!
+}
+
+type DomainConnection {
+  items: [Domain!]!
+  totalCount: Int!
+}
+
+enum ExpertiseLevel {
+  BEGINNER
+  EXPERT
+  INTERMEDIATE
+}
 
 enum GlobalRole {
   ADMIN
@@ -22,13 +65,23 @@ input LoginInput {
 }
 
 type Mutation {
+  createDomain(input: CreateDomainInput!): Domain!
+  deleteDomain(id: ID!): Boolean!
   login(input: LoginInput!): AuthPayload!
   logout: Boolean!
   refresh: AuthPayload!
   register(input: RegisterInput!): AuthPayload!
+  updateDomain(id: ID!, input: UpdateDomainInput!): Domain!
+}
+
+input PageInput {
+  limit: Int! = 20
+  offset: Int! = 0
 }
 
 type Query {
+  domain(id: ID!): Domain!
+  domains(page: PageInput): DomainConnection!
   me: User!
 
   """Horodatage serveur — sonde de disponibilité."""
@@ -39,6 +92,30 @@ input RegisterInput {
   email: String!
   name: String!
   password: String!
+}
+
+enum Tone {
+  ACCESSIBLE
+  EDUCATIONAL
+  JOURNALISTIC
+  NEUTRAL
+  PROFESSIONAL
+  PROVOCATIVE
+  TECHNICAL
+}
+
+input UpdateDomainInput {
+  aiInstructions: String
+  autoPublish: Boolean
+  description: String
+  excludedTopics: [String!]
+  expertiseLevel: ExpertiseLevel
+  keywords: [String!]
+  language: String
+  name: String
+  reviewOutline: Boolean
+  targetAudience: [String!]
+  tone: Tone
 }
 
 type User {
