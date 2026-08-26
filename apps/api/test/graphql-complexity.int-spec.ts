@@ -27,8 +27,10 @@ describe('limite de complexité GraphQL', () => {
 
   it('rejette une requête qui dépasse la limite configurée au démarrage', async () => {
     const res = await h.gql(`{ a: serverTime b: serverTime c: serverTime }`)
-    // formatError (graphql.module.ts) place le code au premier niveau de
-    // l'erreur (`{ message, code, path }`), pas sous `extensions.code`.
+    // formatError (graphql.module.ts) place le code sous `extensions.code`
+    // (norme GraphQL) et le duplique au premier niveau (`code`) par
+    // rétrocompatibilité avec le code front existant.
+    expect(res.body.errors?.[0]?.extensions?.code).toBe('QUERY_TOO_COMPLEX')
     expect(res.body.errors?.[0]?.code).toBe('QUERY_TOO_COMPLEX')
   })
 

@@ -44,11 +44,20 @@ class RootResolver {
         introspection: config.get('NODE_ENV') !== 'production',
         context: ({ req, res }: GqlContext) => ({ req, res }),
         validationRules: [depthLimit(config.get('GRAPHQL_MAX_DEPTH'))],
-        formatError: (error) => ({
-          message: error.message,
-          code: error.extensions?.code ?? 'INTERNAL',
-          path: error.path,
-        }),
+        // `extensions.code` est l'emplacement standard GraphQL pour un code
+        // d'erreur machine-readable (voir apps/web/src/lib/graphql-error.ts,
+        // qui le documente et le lit en priorité) : le supprimer casse tout
+        // client GraphQL générique. `code` à la racine est conservé en plus,
+        // par rétrocompatibilité avec le code front existant qui s'y replie.
+        formatError: (error) => {
+          const code = error.extensions?.code ?? 'INTERNAL'
+          return {
+            message: error.message,
+            path: error.path,
+            extensions: { ...error.extensions, code },
+            code,
+          }
+        },
         plugins: [
           {
             async requestDidStart() {
