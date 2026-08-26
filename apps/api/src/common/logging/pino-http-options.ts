@@ -1,5 +1,5 @@
 import type { Options } from 'pino-http'
-import { CORRELATION_HEADER } from '../middleware/correlation-id.middleware'
+import { CORRELATION_HEADER, resolveCorrelationId } from '../middleware/correlation-id.middleware'
 
 /**
  * Options `pino-http` partagées entre le bootstrap réel (AppModule) et les
@@ -9,7 +9,11 @@ import { CORRELATION_HEADER } from '../middleware/correlation-id.middleware'
  */
 export function createPinoHttpOptions(): Options {
   return {
-    genReqId: (req) => req.headers[CORRELATION_HEADER] as string,
+    // `resolveCorrelationId` revalide la valeur même si elle a déjà été
+    // normalisée par CorrelationIdMiddleware : on ne veut pas dépendre de
+    // l'ordre d'exécution entre ce middleware et pino-http pour empêcher
+    // un client d'injecter un identifiant arbitraire dans les traces.
+    genReqId: (req) => resolveCorrelationId(req.headers[CORRELATION_HEADER]),
     redact: [
       'req.headers.cookie',
       'req.headers.authorization',

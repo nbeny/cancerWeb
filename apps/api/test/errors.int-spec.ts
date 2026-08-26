@@ -77,7 +77,7 @@ describe('correlation ID', () => {
     expect(id?.length).toBeGreaterThan(0)
   })
 
-  it("reprend la valeur fournie par le client si elle existe", async () => {
+  it("reprend la valeur fournie par le client si elle a un format valide", async () => {
     const clientId = 'test-correlation-id-abc123'
     const res = await request(h.app.getHttpServer())
       .post('/graphql')
@@ -85,6 +85,21 @@ describe('correlation ID', () => {
       .set(CORRELATION_HEADER, clientId)
       .send({ query: '{ serverTime }' })
     expect(res.headers[CORRELATION_HEADER]).toBe(clientId)
+  })
+
+  it("ignore une valeur client trop longue et en génère une nouvelle", async () => {
+    // Un client ne doit pas pouvoir imposer une valeur arbitraire (trop
+    // longue, caractères non alphanumériques...) dans les traces ni se
+    // la faire renvoyer telle quelle dans la réponse.
+    const tooLong = 'a'.repeat(200)
+    const res = await request(h.app.getHttpServer())
+      .post('/graphql')
+      .set('Content-Type', 'application/json')
+      .set(CORRELATION_HEADER, tooLong)
+      .send({ query: '{ serverTime }' })
+    const id = res.headers[CORRELATION_HEADER] as string | undefined
+    expect(id).not.toBe(tooLong)
+    expect(id?.length).toBeLessThanOrEqual(64)
   })
 })
 
