@@ -12,6 +12,12 @@ RUN pnpm install --frozen-lockfile
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+# Le build de l'API compile désormais packages/validation (pnpm --filter
+# @cancerweb/validation build, voir apps/api/package.json) : ce paquet a ses
+# propres dépendances (zod) installées par pnpm sous forme de lien symbolique
+# dans SON PROPRE node_modules, pas seulement à la racine. Sans ce COPY, `tsc`
+# échoue à résoudre `zod` pendant ce build (vérifié).
+COPY --from=deps /app/packages/validation/node_modules ./packages/validation/node_modules
 COPY . .
 RUN pnpm --filter @cancerweb/api prisma:generate && pnpm --filter @cancerweb/api build
 
@@ -32,6 +38,16 @@ COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/prisma/schema.prisma ./apps/api/prisma/schema.prisma
 COPY --from=build /app/apps/api/prisma/migrations ./apps/api/prisma/migrations
+# apps/api/node_modules/@cancerweb/validation n'est qu'un symlink pnpm vers
+# packages/validation (workspace) : sans ces trois lignes, le lien pointe dans
+# le vide dans cette image (packages/ n'est copié nulle part ailleurs ici) et
+# `node dist/main` échoue au démarrage sur la résolution de @cancerweb/validation.
+# node_modules est nécessaire en plus de dist/ : packages/validation/dist/*.js
+# fait `require('zod')`, résolu via le node_modules propre au paquet (pnpm
+# n'hoiste pas les dépendances des paquets du workspace à la racine).
+COPY --from=build /app/packages/validation/dist ./packages/validation/dist
+COPY --from=build /app/packages/validation/package.json ./packages/validation/package.json
+COPY --from=build /app/packages/validation/node_modules ./packages/validation/node_modules
 # corepack résout la version de pnpm en remontant depuis le cwd vers le
 # package.json le plus proche portant un champ "packageManager". Sans la
 # racine du monorepo dans l'image, il retombe sur "latest" (téléchargé à la
