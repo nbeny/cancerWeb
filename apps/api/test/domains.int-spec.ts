@@ -8,7 +8,7 @@ beforeEach(async () => { await h.reset() })
 const REGISTER = `mutation ($input: RegisterInput!) { register(input: $input) { user { id } } }`
 const CREATE = `
   mutation ($input: CreateDomainInput!) {
-    createDomain(input: $input) { id name slug language tone autoPublish }
+    createDomain(input: $input) { id name slug language tone autoPublish country }
   }`
 const LIST = `{ domains { items { id name slug } totalCount } }`
 const UPDATE = `
@@ -62,6 +62,22 @@ describe('domaines', () => {
     const { cookies } = await signUp('alice@example.com')
     const res = await h.gql(CREATE, { input: { name: '' } }, cookies)
     expect(res.body.errors).toBeDefined()
+  })
+
+  describe('country (ISO 3166-1 alpha-2)', () => {
+    it('normalise un code pays valide en majuscules', async () => {
+      const { cookies } = await signUp('alice@example.com')
+      const res = await h.gql(CREATE, { input: { name: 'Cybersécurité', country: 'fr' } }, cookies)
+      expect(res.body.errors).toBeUndefined()
+      expect(res.body.data.createDomain.country).toBe('FR')
+    })
+
+    it('refuse un code qui ressemble à un code pays mais n’en est pas un', async () => {
+      const { cookies } = await signUp('alice@example.com')
+      const res = await h.gql(CREATE, { input: { name: 'Cybersécurité', country: 'ZZ' } }, cookies)
+      expect(res.body.errors).toBeDefined()
+      expect(await h.prisma.domain.count()).toBe(0)
+    })
   })
 
   describe('updateDomain avec un null explicite', () => {

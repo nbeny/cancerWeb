@@ -1,5 +1,7 @@
 import { Field, ID, InputType, ObjectType, registerEnumType } from '@nestjs/graphql'
 import { ArrayMaxSize, IsBoolean, IsEnum, IsIn, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator'
+import { Transform } from 'class-transformer'
+import { ISO_3166_1_ALPHA_2 } from '@cancerweb/validation'
 import { ExpertiseLevel, Tone } from '@prisma/client'
 import { Paginated } from '../common/dto/page.input'
 
@@ -36,7 +38,14 @@ export class CreateDomainInput {
   @Field() @IsString() @Length(2, 80) name!: string
   @Field({ nullable: true }) @IsOptional() @IsString() @MaxLength(500) description?: string
   @Field({ defaultValue: 'fr' }) @IsIn(SUPPORTED_LANGUAGES as unknown as string[]) language!: string
-  @Field(() => String, { nullable: true }) @IsOptional() @IsString() @Length(2, 2) country?: string
+  // Normalisé en majuscules avant validation (un client peut envoyer "fr"),
+  // puis vérifié contre la liste ISO 3166-1 alpha-2 : `@Length(2, 2)` seul
+  // laissait passer n'importe quelle paire de caractères (`ZZ`...).
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.toUpperCase() : value))
+  @IsIn(ISO_3166_1_ALPHA_2, { message: 'country doit être un code ISO 3166-1 alpha-2 valide' })
+  country?: string
   @Field(() => Tone, { defaultValue: Tone.PROFESSIONAL }) @IsEnum(Tone) tone!: Tone
   @Field(() => ExpertiseLevel, { defaultValue: ExpertiseLevel.INTERMEDIATE }) @IsEnum(ExpertiseLevel) expertiseLevel!: ExpertiseLevel
   @Field(() => [String], { defaultValue: [] }) @ArrayMaxSize(20) targetAudience!: string[]
