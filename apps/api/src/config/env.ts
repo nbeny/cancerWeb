@@ -1,21 +1,40 @@
 import { z } from 'zod'
 
-const schema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
-  API_PORT: z.coerce.number().int().positive().default(4000),
-  PUBLIC_ORIGIN: z.string().url(),
-  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET doit faire au moins 32 caractères'),
-  JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET doit faire au moins 32 caractères'),
-  ACCESS_TOKEN_TTL: z.string().default('15m'),
-  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
-  COOKIE_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
-  GRAPHQL_MAX_DEPTH: z.coerce.number().int().positive().default(8),
-  GRAPHQL_MAX_COMPLEXITY: z.coerce.number().int().positive().default(1000),
-  RATE_LIMIT_TTL: z.coerce.number().int().positive().default(60),
-  RATE_LIMIT_LIMIT: z.coerce.number().int().positive().default(200),
-})
+// Préfixe des valeurs d'exemple de .env.example (JWT_ACCESS_SECRET,
+// JWT_REFRESH_SECRET...). Ces valeurs satisfont déjà le minimum de 32
+// caractères exigé ci-dessous : rien d'autre n'empêcherait de démarrer en
+// production avec les secrets versionnés dans le dépôt.
+const PLACEHOLDER_SECRET_PREFIX = 'change-me-'
+
+const schema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    DATABASE_URL: z.string().url(),
+    REDIS_URL: z.string().url(),
+    API_PORT: z.coerce.number().int().positive().default(4000),
+    PUBLIC_ORIGIN: z.string().url(),
+    JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET doit faire au moins 32 caractères'),
+    JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET doit faire au moins 32 caractères'),
+    ACCESS_TOKEN_TTL: z.string().default('15m'),
+    REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
+    COOKIE_SECURE: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+    GRAPHQL_MAX_DEPTH: z.coerce.number().int().positive().default(8),
+    GRAPHQL_MAX_COMPLEXITY: z.coerce.number().int().positive().default(1000),
+    RATE_LIMIT_TTL: z.coerce.number().int().positive().default(60),
+    RATE_LIMIT_LIMIT: z.coerce.number().int().positive().default(200),
+  })
+  .superRefine((env, ctx) => {
+    if (env.NODE_ENV !== 'production') return
+    for (const key of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
+      if (env[key].startsWith(PLACEHOLDER_SECRET_PREFIX)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `${key} utilise encore la valeur d'exemple de .env.example : impossible de démarrer en production avec ce secret`,
+        })
+      }
+    }
+  })
 
 export type Env = z.infer<typeof schema>
 

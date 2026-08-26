@@ -26,4 +26,38 @@ describe('parseEnv', () => {
     const { DATABASE_URL, ...withoutDb } = valid
     expect(() => parseEnv(withoutDb)).toThrow(/DATABASE_URL/)
   })
+
+  it('rejette un secret placeholder "change-me-" en production', () => {
+    expect(() =>
+      parseEnv({
+        ...valid,
+        NODE_ENV: 'production',
+        JWT_ACCESS_SECRET: 'change-me-access-secret-at-least-32-characters',
+      }),
+    ).toThrow(/JWT_ACCESS_SECRET/)
+  })
+
+  it('accepte un secret placeholder "change-me-" hors production (dev, test, CI)', () => {
+    expect(() =>
+      parseEnv({ ...valid, NODE_ENV: 'test', JWT_ACCESS_SECRET: 'change-me-access-secret-at-least-32-characters' }),
+    ).not.toThrow()
+    expect(() =>
+      parseEnv({
+        ...valid,
+        NODE_ENV: 'development',
+        JWT_REFRESH_SECRET: 'change-me-refresh-secret-at-least-32-chars',
+      }),
+    ).not.toThrow()
+  })
+
+  it('accepte un vrai secret en production', () => {
+    expect(() =>
+      parseEnv({
+        ...valid,
+        NODE_ENV: 'production',
+        JWT_ACCESS_SECRET: 'x'.repeat(32),
+        JWT_REFRESH_SECRET: 'y'.repeat(32),
+      }),
+    ).not.toThrow()
+  })
 })
