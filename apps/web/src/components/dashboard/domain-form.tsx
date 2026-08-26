@@ -3,19 +3,14 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import type { ExpertiseLevel, Tone } from '@cancerweb/graphql'
+import { createDomainSchema, type CreateDomainValues } from '@cancerweb/validation'
 import { browserSdk } from '@/lib/graphql-client'
 import { Button } from '@/components/ui/button'
 import { ErrorState } from '@/components/ui/error-state'
 
-interface Values {
-  name: string
-  description: string
-  language: string
-  tone: Tone
-  expertiseLevel: ExpertiseLevel
-  aiInstructions: string
-}
+type Values = CreateDomainValues
 
 // `Tone` et `ExpertiseLevel` sont des unions de littéraux string (pas des enums
 // TypeScript) : les valeurs de <select> ci-dessous sont donc directement assignables,
@@ -33,6 +28,7 @@ export function DomainForm() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const { register, handleSubmit, formState } = useForm<Values>({
+    resolver: zodResolver(createDomainSchema),
     defaultValues: { language: 'fr', tone: 'PROFESSIONAL', expertiseLevel: 'INTERMEDIATE' },
   })
 
@@ -64,13 +60,16 @@ export function DomainForm() {
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-slate-700">Nom du domaine</span>
-        <input {...register('name', { required: true, minLength: 2 })} placeholder="Cybersécurité" className={field} />
-        {formState.errors.name && <span className="text-xs text-red-600">Le nom doit faire au moins 2 caractères</span>}
+        <input {...register('name')} placeholder="Cybersécurité" className={field} />
+        {formState.errors.name && <span className="text-xs text-red-600">{formState.errors.name.message}</span>}
       </label>
 
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-slate-700">Description</span>
         <textarea {...register('description')} rows={2} className={field} />
+        {formState.errors.description && (
+          <span className="text-xs text-red-600">{formState.errors.description.message}</span>
+        )}
       </label>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -103,6 +102,9 @@ export function DomainForm() {
           {...register('aiInstructions')} rows={5} className={field}
           placeholder={'Toujours expliquer les concepts techniques avec des exemples.\nÉviter les phrases marketing.\nPrivilégier les informations vérifiables.'}
         />
+        {formState.errors.aiInstructions && (
+          <span className="text-xs text-red-600">{formState.errors.aiInstructions.message}</span>
+        )}
       </label>
 
       <Button type="submit" loading={formState.isSubmitting} className="self-start">Créer le domaine</Button>
