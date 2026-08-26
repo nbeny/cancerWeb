@@ -2,8 +2,67 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type Article {
+  authorId: ID!
+  canonicalUrl: String
+  categoryId: ID
+  content: String!
+  coverImageUrl: String
+  createdAt: DateTime!
+  currentVersion: Int!
+  domainId: ID!
+  excerpt: String
+  focusKeyword: String
+  id: ID!
+  latestSeoScore: Int
+  metaDescription: String
+  publishedAt: DateTime
+  renderedHtml: String
+  robotsFollow: Boolean!
+  robotsIndex: Boolean!
+  scheduledAt: DateTime
+  secondaryKeywords: [String!]!
+  seoTitle: String
+  slug: String!
+  status: ArticleStatus!
+  title: String!
+  topicId: ID
+  updatedAt: DateTime!
+  wordCount: Int!
+}
+
+type ArticleConnection {
+  items: [Article!]!
+  totalCount: Int!
+}
+
+enum ArticleStatus {
+  APPROVED
+  ARCHIVED
+  DRAFT
+  PUBLISHED
+  REVIEW
+  SCHEDULED
+}
+
 type AuthPayload {
   user: User!
+}
+
+input CreateArticleInput {
+  canonicalUrl: String
+  categoryId: ID
+  content: String!
+  coverImageUrl: String
+  excerpt: String
+  focusKeyword: String
+  metaDescription: String
+  robotsFollow: Boolean! = true
+  robotsIndex: Boolean! = true
+  secondaryKeywords: [String!]! = []
+  seoTitle: String
+  title: String!
+  topicId: ID
 }
 
 input CreateDomainInput {
@@ -75,8 +134,10 @@ input LoginInput {
 }
 
 type Mutation {
+  createArticle(domainId: ID!, input: CreateArticleInput!): Article!
   createDomain(input: CreateDomainInput!): Domain!
   createTopic(domainId: ID!, input: CreateTopicInput!): Topic!
+  deleteArticle(domainId: ID!, id: ID!): Boolean!
   deleteDomain(id: ID!): Boolean!
   deleteTopic(domainId: ID!, id: ID!): Boolean!
   login(input: LoginInput!): AuthPayload!
@@ -85,6 +146,7 @@ type Mutation {
   register(input: RegisterInput!): AuthPayload!
   rejectTopic(domainId: ID!, id: ID!): Topic!
   selectTopic(domainId: ID!, id: ID!): Topic!
+  updateArticle(domainId: ID!, id: ID!, input: UpdateArticleInput!): Article!
   updateDomain(id: ID!, input: UpdateDomainInput!): Domain!
   updateTopic(domainId: ID!, id: ID!, input: UpdateTopicInput!): Topic!
 }
@@ -95,6 +157,8 @@ input PageInput {
 }
 
 type Query {
+  article(domainId: ID!, id: ID!): Article!
+  articles(domainId: ID!, page: PageInput): ArticleConnection!
   domain(id: ID!): Domain!
   domains(page: PageInput): DomainConnection!
   me: User!
@@ -154,6 +218,21 @@ enum TopicStatus {
   IDEA
   REJECTED
   SELECTED
+}
+
+input UpdateArticleInput {
+  canonicalUrl: String
+  categoryId: ID
+  content: String
+  coverImageUrl: String
+  excerpt: String
+  focusKeyword: String
+  metaDescription: String
+  robotsFollow: Boolean
+  robotsIndex: Boolean
+  secondaryKeywords: [String!]
+  seoTitle: String
+  title: String
 }
 
 input UpdateDomainInput {
