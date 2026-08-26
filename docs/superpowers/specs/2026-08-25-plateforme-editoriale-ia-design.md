@@ -641,7 +641,11 @@ apps/web/src/
 - Client Components : TanStack Query + `graphql-request`.
 - Server Components : helper `serverQuery()` relayant le cookie.
 - Pas d'Apollo Client : son cache normalisé résout un problème que cette application n'a pas, à un coût de complexité réel.
-- Formulaires : `react-hook-form` + `zod`, schémas partagés client/serveur via `packages/validation`.
+- Formulaires : `react-hook-form` + `zod`, schémas dans `packages/validation`.
+
+**Limite constatée en implémentation :** `packages/validation` n'est **pas** réellement partagé client/serveur. Le paquet ne publie que du TypeScript source (`main` pointe vers un `.ts`), ce que le bundler de Next.js sait consommer via `transpilePackages`, mais pas `apps/api`, qui compile avec `tsc` nu et s'exécute avec `node` sans bundler : `nest build` puis `node dist/main` échouent sur un import de ce paquet. Découvert en reconstruisant l'image Docker, pas au typecheck.
+
+Conséquence actuelle : les règles communes sont **dupliquées** entre `packages/validation` (front) et `class-validator` (API), avec des commentaires croisés. C'est exactement ce que le paquet devait éviter. Pour rendre le partage effectif au Lot 1, il faut donner un vrai build à `packages/validation` (émission de JavaScript + déclarations, `main`/`types` pointant vers `dist/`) et l'ajouter aux dépendances de build de l'API. Tant que ce n'est pas fait, toute modification d'une borne doit être répercutée aux deux endroits — et un test devrait le vérifier.
 
 ### Authentification côté web
 
