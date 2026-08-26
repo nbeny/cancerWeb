@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GraphQLClient } from 'graphql-request'
 import { getSdk } from '@cancerweb/graphql'
+import { isTrustedFetchSite } from '@/lib/fetch-metadata'
 import { safeNext } from '@/lib/safe-next'
 
 const INTERNAL_URL = process.env.API_INTERNAL_URL ?? 'http://localhost:4000/graphql'
@@ -9,6 +10,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const next = safeNext(request.nextUrl.searchParams.get('next'), request.url)
   const cookieHeader = request.headers.get('cookie') ?? ''
   const login = new URL('/auth/login', request.url)
+
+  // Cette route mute l'état (rotation du refresh token) malgré son verbe
+  // GET (voir fetch-metadata.ts) : on ne l'honore que pour une navigation
+  // qui provient bien de ce site.
+  if (!isTrustedFetchSite(request.headers.get('sec-fetch-site'))) {
+    return NextResponse.redirect(login)
+  }
 
   try {
     const sdk = getSdk(new GraphQLClient(INTERNAL_URL, { headers: { cookie: cookieHeader } }))
