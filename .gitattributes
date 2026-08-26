@@ -1,0 +1,21 @@
+# Normalise les fins de ligne à l'extraction et au commit : sans ça,
+# packages/graphql/schema.graphql (régénéré par `pnpm codegen` sous
+# Windows, où git checkout out peut convertir LF -> CRLF selon
+# core.autocrlf) apparaît systématiquement modifié dans `git status` alors
+# que seuls les retours chariot diffèrent. `eol=lf` force LF en dépôt et à
+# l'extraction quel que soit l'OS, ce qui élimine ce bruit et le risque de
+# faux positif si une vérification de dérive du SDL tournait un jour sous
+# Windows en CI.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary
