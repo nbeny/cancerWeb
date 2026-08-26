@@ -1,9 +1,9 @@
 import { Field, ID, InputType, ObjectType, registerEnumType } from '@nestjs/graphql'
 import { ArrayMaxSize, IsBoolean, IsEnum, IsIn, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator'
 import { Transform } from 'class-transformer'
-import { ISO_3166_1_ALPHA_2 } from '@cancerweb/validation'
 import { ExpertiseLevel, Tone } from '@prisma/client'
 import { Paginated } from '../common/dto/page.input'
+import { ISO_3166_1_ALPHA_2 } from './iso-3166-1-alpha-2'
 
 registerEnumType(Tone, { name: 'Tone' })
 registerEnumType(ExpertiseLevel, { name: 'ExpertiseLevel' })

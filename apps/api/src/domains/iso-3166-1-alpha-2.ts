@@ -1,18 +1,20 @@
 // Liste complète des codes pays ISO 3166-1 alpha-2 (source : norme ISO,
 // stable depuis des décennies — un tableau statique est suffisant, pas
-// besoin d'une dépendance pour ça). Un `@Length(2, 2)` côté API seul
-// laissait passer n'importe quelle paire de caractères (`ZZ`, `XX`...) :
-// `Domain.country` sert potentiellement à cibler du contenu par pays, une
-// valeur invalide n'a donc aucun sens métier et ne doit pas être acceptée
-// silencieusement.
+// besoin d'une dépendance pour ça). Un `@Length(2, 2)` seul laissait passer
+// n'importe quelle paire de caractères (`ZZ`, `XX`...) : `Domain.country`
+// sert potentiellement à cibler du contenu par pays, une valeur invalide
+// n'a donc aucun sens métier et ne doit pas être acceptée silencieusement.
 //
-// Dupliquée avec apps/api/src/domains/iso-3166-1-alpha-2.ts plutôt que
-// partagée depuis apps/api : ce paquet ne publie que sa source TypeScript
-// (pas de build), ce qu'apps/web peut consommer directement (Next.js
-// bundle les paquets du workspace) mais pas apps/api, compilé par `nest
-// build` (tsc nu) puis exécuté par `node dist/main` sans bundler — un
-// `require('@cancerweb/validation')` échoue dans ce contexte. Vérifié
-// empiriquement en reconstruisant l'image Docker de l'API.
+// Dupliquée avec packages/validation/src/country.ts (utilisée par le schéma
+// zod du formulaire front) plutôt que partagée : apps/api est compilé par
+// `nest build` (tsc nu, sans bundler) puis exécuté par `node dist/main`,
+// alors que @cancerweb/validation ne publie que sa source TypeScript
+// (`"main": "./src/index.ts"`, pas de dist/) — ça fonctionne côté
+// apps/web car Next.js bundle et transpile les paquets du workspace, mais
+// `node dist/main` ne sait pas exécuter du TypeScript brut. Vérifié
+// empiriquement : `node -e "require('@cancerweb/validation')"` échoue hors
+// bundler. Deux copies d'une liste ISO stable est un compromis raisonnable
+// plutôt que d'ajouter une étape de build à un paquet partagé pour ça.
 export const ISO_3166_1_ALPHA_2 = [
   'AD', 'AE', 'AF', 'AG', 'AI', 'AL', 'AM', 'AO', 'AQ', 'AR', 'AS', 'AT', 'AU', 'AW', 'AX', 'AZ',
   'BA', 'BB', 'BD', 'BE', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BL', 'BM', 'BN', 'BO', 'BQ', 'BR', 'BS',
