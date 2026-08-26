@@ -21,7 +21,9 @@ export class GqlThrottlerGuard extends ThrottlerGuard {
   // Quand l'utilisateur est authentifié (req.user posé par GqlAuthGuard,
   // qui s'exécute avant ce guard dans la liste des APP_GUARD), on suit son
   // identité plutôt que son IP ; sinon on retombe sur l'IP.
-  protected override async getTracker(req: Record<string, any>): Promise<string> {
+  protected override async getTracker(
+    req: Request & { user?: { id?: string } },
+  ): Promise<string> {
     return req.user?.id ? `user:${req.user.id}` : `ip:${req.ip}`
   }
 }

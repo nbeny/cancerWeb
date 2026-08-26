@@ -7,6 +7,18 @@ import request from 'supertest'
 import { AppModule } from '../src/app.module'
 import { PrismaService } from '../src/prisma/prisma.service'
 
+interface GraphQLErrorBody {
+  errors?: Array<{ extensions?: { code?: string }; code?: string }>
+}
+
+// L'API et les anciens tests ne s'accordent pas encore forcément sur
+// l'emplacement du code d'erreur (`extensions.code` selon la norme
+// GraphQL, ou une clé `code` à la racine gardée pour rétrocompatibilité) :
+// ce helper couvre les deux formes plutôt que de dupliquer le repli dans
+// chaque fichier de test.
+export const errorCode = (body: GraphQLErrorBody): string | undefined =>
+  body.errors?.[0]?.extensions?.code ?? body.errors?.[0]?.code
+
 export interface Harness {
   app: INestApplication
   prisma: PrismaService

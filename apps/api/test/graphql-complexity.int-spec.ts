@@ -7,6 +7,10 @@ import type { createHarness as CreateHarness, Harness } from './app-harness'
 // `parseEnv` la voie au démarrage.
 process.env.GRAPHQL_MAX_COMPLEXITY = '2'
 
+// `import` serait hissé au-dessus de l'affectation de `process.env` ci-dessus
+// et casserait l'ordre requis : `require` reste ici le seul moyen d'obtenir
+// une exécution différée et donc de contrôler l'ordre d'évaluation.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { createHarness } = require('./app-harness') as { createHarness: typeof CreateHarness }
 
 let h: Harness

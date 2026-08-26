@@ -1,4 +1,4 @@
-import { createHarness, Harness } from './app-harness'
+import { createHarness, errorCode, Harness } from './app-harness'
 
 let h: Harness
 beforeAll(async () => { h = await createHarness() })
@@ -18,9 +18,6 @@ const LOGIN = `
 const ME = `{ me { id email } }`
 
 const input = { email: 'alice@example.com', password: 'Sup3r-Secret!', name: 'Alice Martin' }
-
-const errorCode = (body: any): string =>
-  body.errors?.[0]?.extensions?.code ?? body.errors?.[0]?.code
 
 describe('authentification', () => {
   it('inscrit un utilisateur et pose les cookies', async () => {

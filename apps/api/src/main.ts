@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import { ValidationPipe } from '@nestjs/common'
 import cookieParser from 'cookie-parser'
+import type { Response } from 'express'
 import helmet from 'helmet'
 import { Logger } from 'nestjs-pino'
 import { AppModule } from './app.module'
@@ -27,7 +28,7 @@ async function bootstrap() {
   // Next.js pour le blog public (Lot 3).
   app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
-  app.getHttpAdapter().getInstance().get('/health', (_req: unknown, res: any) =>
+  app.getHttpAdapter().getInstance().get('/health', (_req: unknown, res: Response) =>
     res.json({ status: 'ok' }),
   )
   await app.listen(env.API_PORT)

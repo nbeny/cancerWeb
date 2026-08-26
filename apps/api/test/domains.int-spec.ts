@@ -1,4 +1,4 @@
-import { createHarness, Harness } from './app-harness'
+import { createHarness, errorCode, Harness } from './app-harness'
 
 let h: Harness
 beforeAll(async () => { h = await createHarness() })
@@ -15,9 +15,6 @@ const UPDATE = `
   mutation ($id: ID!, $input: UpdateDomainInput!) {
     updateDomain(id: $id, input: $input) { id name description }
   }`
-
-const errorCode = (body: any): string | undefined =>
-  body.errors?.[0]?.extensions?.code ?? body.errors?.[0]?.code
 
 async function signUp(email: string): Promise<{ cookies: string[]; userId: string }> {
   const res = await h.gql(REGISTER, { input: { email, password: 'Sup3r-Secret!', name: email.split('@')[0] } })

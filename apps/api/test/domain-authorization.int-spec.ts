@@ -1,5 +1,5 @@
 import { DomainRole, GlobalRole } from '@prisma/client'
-import { createHarness, Harness } from './app-harness'
+import { createHarness, errorCode, Harness } from './app-harness'
 
 let h: Harness
 beforeAll(async () => { h = await createHarness() })
@@ -15,9 +15,6 @@ async function signUp(email: string) {
   const res = await h.gql(REGISTER, { input: { email, password: 'Sup3r-Secret!', name: email.split('@')[0] } })
   return { cookies: res.headers['set-cookie'] as unknown as string[], userId: res.body.data.register.user.id }
 }
-
-const errorCode = (body: any): string =>
-  body.errors?.[0]?.extensions?.code ?? body.errors?.[0]?.code
 
 describe('autorisation par domaine', () => {
   it('interdit à un non-membre de modifier un domaine', async () => {

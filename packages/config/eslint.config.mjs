@@ -13,7 +13,11 @@ export default [
         'error',
         {
           argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_'
+          varsIgnorePattern: '^_',
+          // `const { toOmit, ...rest } = obj` is the standard idiom for
+          // dropping a property before using the remainder; `toOmit` is
+          // deliberately unused and is not a real defect.
+          ignoreRestSiblings: true
         }
       ]
     }

@@ -2,7 +2,7 @@ import request from 'supertest'
 import { Writable } from 'node:stream'
 import { PARAMS_PROVIDER_TOKEN } from 'nestjs-pino'
 import { Prisma } from '@prisma/client'
-import { createHarness, Harness } from './app-harness'
+import { createHarness, errorCode, Harness } from './app-harness'
 import { CORRELATION_HEADER } from '../src/common/middleware/correlation-id.middleware'
 import { createPinoHttpOptions } from '../src/common/logging/pino-http-options'
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter'
@@ -11,9 +11,6 @@ let h: Harness
 beforeAll(async () => { h = await createHarness() })
 afterAll(async () => { await h.close() })
 beforeEach(async () => { await h.reset() })
-
-const errorCode = (body: any): string =>
-  body.errors?.[0]?.extensions?.code ?? body.errors?.[0]?.code
 
 describe('gestion des erreurs', () => {
   it('mappe une exception métier vers un code stable', async () => {

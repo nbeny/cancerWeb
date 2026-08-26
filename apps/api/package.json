@@ -19,7 +19,8 @@
     "db:generate": "dotenv -e ../../.env -- prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:status": "prisma migrate status"
+    "prisma:status": "prisma migrate status",
+    "lint": "eslint ."
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -55,6 +56,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@cancerweb/config": "workspace:*",
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
     "@nestjs/testing": "^11.2.3",

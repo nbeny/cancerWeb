@@ -1,8 +1,5 @@
 import { getOptionsToken } from '@nestjs/throttler'
-import { createHarness, Harness } from './app-harness'
-
-const errorCode = (body: any): string =>
-  body.errors?.[0]?.extensions?.code ?? body.errors?.[0]?.code
+import { createHarness, errorCode, Harness } from './app-harness'
 
 // Le ThrottlerGuard par défaut lit req/res via `context.switchToHttp()`,
 // vide en GraphQL : sans la surcharge `GqlThrottlerGuard.getRequestResponse`,
