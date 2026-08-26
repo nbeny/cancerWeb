@@ -53,6 +53,18 @@ export class Article {
 @ObjectType()
 export class ArticleConnection extends Paginated(Article) {}
 
+@ObjectType()
+export class ArticleVersion {
+  @Field(() => ID) id!: string
+  @Field(() => ID) articleId!: string
+  @Field(() => Int) version!: number
+  @Field() title!: string
+  @Field() content!: string
+  @Field(() => String, { nullable: true }) changeNote?: string | null
+  @Field(() => ID) createdById!: string
+  @Field() createdAt!: Date
+}
+
 // Même motif que domain.types.ts / topic.types.ts : `undefined` (champ omis)
 // et `null` (effacement explicite) doivent être traités différemment pour
 // les colonnes nullables (categoryId, excerpt, coverImageUrl, seoTitle,

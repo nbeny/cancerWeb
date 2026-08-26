@@ -45,6 +45,17 @@ enum ArticleStatus {
   SCHEDULED
 }
 
+type ArticleVersion {
+  articleId: ID!
+  changeNote: String
+  content: String!
+  createdAt: DateTime!
+  createdById: ID!
+  id: ID!
+  title: String!
+  version: Int!
+}
+
 type AuthPayload {
   user: User!
 }
@@ -134,7 +145,10 @@ input LoginInput {
 }
 
 type Mutation {
+  approveArticle(domainId: ID!, id: ID!): Article!
+  archiveArticle(domainId: ID!, id: ID!): Article!
   createArticle(domainId: ID!, input: CreateArticleInput!): Article!
+  createArticleVersion(articleId: ID!, changeNote: String, domainId: ID!): ArticleVersion!
   createDomain(input: CreateDomainInput!): Domain!
   createTopic(domainId: ID!, input: CreateTopicInput!): Topic!
   deleteArticle(domainId: ID!, id: ID!): Boolean!
@@ -142,10 +156,15 @@ type Mutation {
   deleteTopic(domainId: ID!, id: ID!): Boolean!
   login(input: LoginInput!): AuthPayload!
   logout: Boolean!
+  publishArticle(domainId: ID!, id: ID!): Article!
   refresh: AuthPayload!
   register(input: RegisterInput!): AuthPayload!
+  rejectArticle(domainId: ID!, id: ID!): Article!
   rejectTopic(domainId: ID!, id: ID!): Topic!
+  restoreArticleVersion(articleId: ID!, domainId: ID!, version: Int!): Article!
+  scheduleArticle(domainId: ID!, id: ID!, scheduledAt: DateTime!): Article!
   selectTopic(domainId: ID!, id: ID!): Topic!
+  submitForReview(domainId: ID!, id: ID!): Article!
   updateArticle(domainId: ID!, id: ID!, input: UpdateArticleInput!): Article!
   updateDomain(id: ID!, input: UpdateDomainInput!): Domain!
   updateTopic(domainId: ID!, id: ID!, input: UpdateTopicInput!): Topic!
@@ -158,6 +177,7 @@ input PageInput {
 
 type Query {
   article(domainId: ID!, id: ID!): Article!
+  articleVersions(articleId: ID!, domainId: ID!): [ArticleVersion!]!
   articles(domainId: ID!, page: PageInput): ArticleConnection!
   domain(id: ID!): Domain!
   domains(page: PageInput): DomainConnection!
