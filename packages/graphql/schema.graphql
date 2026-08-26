@@ -19,6 +19,16 @@ input CreateDomainInput {
   tone: Tone! = PROFESSIONAL
 }
 
+input CreateTopicInput {
+  description: String
+  estimatedDifficulty: Int
+  estimatedInterest: Int
+  keywords: [String!]! = []
+  searchIntent: SearchIntent
+  suggestedAngle: String
+  title: String!
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
@@ -66,12 +76,17 @@ input LoginInput {
 
 type Mutation {
   createDomain(input: CreateDomainInput!): Domain!
+  createTopic(domainId: ID!, input: CreateTopicInput!): Topic!
   deleteDomain(id: ID!): Boolean!
+  deleteTopic(domainId: ID!, id: ID!): Boolean!
   login(input: LoginInput!): AuthPayload!
   logout: Boolean!
   refresh: AuthPayload!
   register(input: RegisterInput!): AuthPayload!
+  rejectTopic(domainId: ID!, id: ID!): Topic!
+  selectTopic(domainId: ID!, id: ID!): Topic!
   updateDomain(id: ID!, input: UpdateDomainInput!): Domain!
+  updateTopic(domainId: ID!, id: ID!, input: UpdateTopicInput!): Topic!
 }
 
 input PageInput {
@@ -86,12 +101,21 @@ type Query {
 
   """Horodatage serveur — sonde de disponibilité."""
   serverTime: String!
+  topic(domainId: ID!, id: ID!): Topic!
+  topics(domainId: ID!, page: PageInput, status: TopicStatus): TopicConnection!
 }
 
 input RegisterInput {
   email: String!
   name: String!
   password: String!
+}
+
+enum SearchIntent {
+  COMMERCIAL
+  INFORMATIONAL
+  NAVIGATIONAL
+  TRANSACTIONAL
 }
 
 enum Tone {
@@ -102,6 +126,34 @@ enum Tone {
   PROFESSIONAL
   PROVOCATIVE
   TECHNICAL
+}
+
+type Topic {
+  createdAt: DateTime!
+  description: String
+  domainId: ID!
+  estimatedDifficulty: Int
+  estimatedInterest: Int
+  generatedByJobId: String
+  id: ID!
+  keywords: [String!]!
+  searchIntent: SearchIntent
+  status: TopicStatus!
+  suggestedAngle: String
+  title: String!
+  updatedAt: DateTime!
+}
+
+type TopicConnection {
+  items: [Topic!]!
+  totalCount: Int!
+}
+
+enum TopicStatus {
+  CONVERTED
+  IDEA
+  REJECTED
+  SELECTED
 }
 
 input UpdateDomainInput {
@@ -116,6 +168,16 @@ input UpdateDomainInput {
   reviewOutline: Boolean
   targetAudience: [String!]
   tone: Tone
+}
+
+input UpdateTopicInput {
+  description: String
+  estimatedDifficulty: Int
+  estimatedInterest: Int
+  keywords: [String!]
+  searchIntent: SearchIntent
+  suggestedAngle: String
+  title: String
 }
 
 type User {
