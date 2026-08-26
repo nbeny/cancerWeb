@@ -66,5 +66,5 @@ export function evaluateKeyword(ast: Root, ctx: SeoContext): CriterionResult {
     })
   }
 
-  return { code: 'KEYWORD', earned, max: MAX, issues }
+  return { code: 'KEYWORD', earned, max: MAX, issues, metrics: { keywordDensity: density } }
 }

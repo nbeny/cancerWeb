@@ -42,11 +42,20 @@ export function evaluateReadability(ast: Root, ctx: SeoContext): CriterionResult
           message: `La lisibilité n'a pas été mesurée : la langue "${ctx.language}" n'est pas encore prise en charge par l'analyseur.`,
         },
       ],
+      // `readabilitySupported` reste exposé même neutralisé : c'est ce qui
+      // permet à un consommateur de distinguer "non mesurée (langue non
+      // couverte)" de "mesurée à un score bas", sans avoir à ré-inspecter
+      // les issues pour le savoir.
+      metrics: { readabilitySupported: 0 },
     }
   }
 
   const normalized = Math.min(SCORE_SCALE_MAX, Math.max(0, score))
   const earned = (normalized / SCORE_SCALE_MAX) * MAX
 
-  return { code: 'READABILITY', earned, max: MAX, issues: [] }
+  // `readability` porte le score brut de la formule (Flesch/Kandel-Moles),
+  // pas la note ramenée sur 10 (`earned`) : c'est ce chiffre, sur son
+  // échelle usuelle, qu'un panneau SEO ou le Lot 2 affichent et comparent,
+  // pas la contribution au barème.
+  return { code: 'READABILITY', earned, max: MAX, issues: [], metrics: { readability: score, readabilitySupported: 1 } }
 }

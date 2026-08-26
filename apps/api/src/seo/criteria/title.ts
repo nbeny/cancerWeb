@@ -47,5 +47,5 @@ export function evaluateTitle(_ast: Root, ctx: SeoContext): CriterionResult {
     }
   }
 
-  return { code: 'TITLE', earned, max, issues }
+  return { code: 'TITLE', earned, max, issues, metrics: { seoTitleLength: title.length } }
 }

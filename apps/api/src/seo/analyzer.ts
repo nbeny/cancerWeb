@@ -69,6 +69,25 @@ function buildMetrics(ast: Root): Record<string, number> {
  * `focusKeyword`, ou READABILITY pour une langue non couverte) : le score
  * reste sur 100 et reste comparable entre deux articles, l'un ayant
  * renseigné une donnée facultative et l'autre non.
+ *
+ * `metrics` fusionne les métriques structurelles calculées ici
+ * (`buildMetrics`, indépendantes de tout critère : nombre de mots, de
+ * liens, d'images...) avec celles que chaque critère a déjà calculées en
+ * interne pour se noter (longueur du titre, densité de mot-clé, score de
+ * lisibilité brut...). Ces dernières seraient sinon jetées après usage,
+ * alors qu'elles sont exactement ce dont le panneau SEO de l'interface a
+ * besoin pour afficher "142/158 caractères" en direct, et ce dont le
+ * Lot 2 a besoin pour cibler une correction plutôt que de la recalculer
+ * (et risquer de diverger de ce qui a réellement servi à noter l'article).
+ * Métriques incluses même pour un critère neutralisé (`skipped`), quand
+ * elles restent porteuses de sens (ex. `readabilitySupported: 0`).
+ *
+ * Règle de collision : les métriques d'un critère l'emportent sur celles de
+ * `buildMetrics`, fusionnées dans l'ordre de `CRITERIA` (un critère plus
+ * loin dans la liste l'emporte sur un précédent). Aucune collision
+ * n'existe aujourd'hui entre les deux sources ni entre critères — la
+ * fusion est néanmoins définie explicitement pour ne pas dépendre d'un
+ * hasard de nommage si un critère futur réutilise une clé existante.
  */
 export function analyze(ast: Root, ctx: SeoContext): SeoReportData {
   const results = CRITERIA.map((evaluate) => evaluate(ast, ctx))
@@ -83,10 +102,15 @@ export function analyze(ast: Root, ctx: SeoContext): SeoReportData {
   const raw = max > 0 ? Math.round((earned / max) * 100) : 0
   const score = blocking.length > 0 ? Math.min(raw, 60) : raw
 
+  const metrics = results.reduce(
+    (acc, r) => Object.assign(acc, r.metrics),
+    buildMetrics(ast),
+  )
+
   return {
     score,
     cappedBy: blocking.map((i) => i.code),
     issues,
-    metrics: buildMetrics(ast),
+    metrics,
   }
 }

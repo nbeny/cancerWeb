@@ -31,6 +31,16 @@ export interface SeoIssue {
  * lisibilité) : elle ne doit alors compter ni dans les points gagnés ni dans
  * le total possible (voir `analyzer.ts`), pour ne pas pénaliser l'absence
  * d'une donnée facultative.
+ *
+ * `metrics` porte les valeurs numériques que le critère a déjà calculées
+ * pour se noter (longueur du titre, densité de mot-clé, score de
+ * lisibilité brut...) et qui ont un sens hors du calcul du score : le
+ * panneau SEO de l'interface (Task 17) en a besoin pour afficher
+ * "142/158 caractères" pendant la frappe, et le Lot 2 pour cibler ses
+ * corrections ("raccourcir le titre de 12 caractères" plutôt que "le
+ * titre est trop long"). Toujours renvoyées, même quand le critère est
+ * neutralisé (`skipped`), quand elles ont un sens (ex. `readabilitySupported`
+ * reste exposé pour une langue non couverte).
  */
 export interface CriterionResult {
   code: string
@@ -38,6 +48,7 @@ export interface CriterionResult {
   max: number
   issues: SeoIssue[]
   skipped?: boolean
+  metrics?: Record<string, number>
 }
 
 export interface SeoReportData {

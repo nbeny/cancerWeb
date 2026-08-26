@@ -31,6 +31,7 @@ export function evaluateMetaDescription(_ast: Root, ctx: SeoContext): CriterionR
           field: 'metaDescription',
         },
       ],
+      metrics: { metaDescriptionLength: 0 },
     }
   }
 
@@ -62,5 +63,5 @@ export function evaluateMetaDescription(_ast: Root, ctx: SeoContext): CriterionR
     }
   }
 
-  return { code: 'META_DESCRIPTION', earned, max, issues }
+  return { code: 'META_DESCRIPTION', earned, max, issues, metrics: { metaDescriptionLength: description.length } }
 }

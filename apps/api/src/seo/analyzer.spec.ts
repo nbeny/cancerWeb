@@ -123,4 +123,37 @@ describe('analyze', () => {
     expect(report.metrics.wordCount).toBeGreaterThan(600)
     expect(typeof report.metrics.wordCount).toBe('number')
   })
+
+  it('expose les métriques calculées par chaque critère, pas seulement les métriques structurelles', () => {
+    const report = analyze(parse(buildPerfectMarkdown()), perfectContext())
+
+    // L'interface (Task 17) affiche "142/158 caractères" en direct : elle a
+    // besoin des longueurs déjà calculées par les critères, pas de les
+    // recalculer côté client au risque de diverger.
+    expect(report.metrics.seoTitleLength).toBe(seoTitle.length)
+    expect(report.metrics.metaDescriptionLength).toBe(metaDescription.length)
+    expect(typeof report.metrics.keywordDensity).toBe('number')
+    expect(report.metrics.readabilitySupported).toBe(1)
+    expect(typeof report.metrics.readability).toBe('number')
+  })
+
+  it('mesure la lisibilité différemment selon la langue, et l’expose dans le rapport', () => {
+    // Preuve que la calibration par langue (Task 4) existe réellement et
+    // n'est pas un paramètre ignoré : sur EXACTEMENT le même texte, le score
+    // de lisibilité exposé dans le rapport diffère selon `language`.
+    const markdown = parse(buildPerfectMarkdown())
+    const fr = analyze(markdown, perfectContext({ language: 'fr' }))
+    const en = analyze(markdown, perfectContext({ language: 'en' }))
+
+    expect(fr.metrics.readability).toBeDefined()
+    expect(en.metrics.readability).toBeDefined()
+    expect(fr.metrics.readability).not.toBe(en.metrics.readability)
+  })
+
+  it('neutralise la lisibilité pour une langue non couverte sans faire disparaître le champ', () => {
+    const report = analyze(parse(buildPerfectMarkdown()), perfectContext({ language: 'de' }))
+
+    expect(report.metrics.readabilitySupported).toBe(0)
+    expect(report.metrics.readability).toBeUndefined()
+  })
 })
