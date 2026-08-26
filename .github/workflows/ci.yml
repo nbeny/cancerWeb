@@ -63,8 +63,6 @@ jobs:
 
       - run: pnpm typecheck
 
-      # Attention : `pnpm -r lint` ne couvre aujourd'hui que apps/web, seul
-      # package doté d'un script `lint`. Voir le suivi dans le plan du Lot 0.
       - run: pnpm lint
 
       - run: pnpm --filter @cancerweb/api test
