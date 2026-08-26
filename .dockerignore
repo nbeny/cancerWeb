@@ -6,8 +6,13 @@ dist
 **/dist
 .git
 *.log
+# Sans le préfixe "**/", ces motifs ne matchent qu'à la racine du contexte
+# de build : apps/api/.env.test (secrets de test) se retrouvait copié dans
+# l'image via `COPY . .` (étape build) puis dans l'image d'exécution.
 .env
-.env.*.local
+**/.env
+.env.*
+**/.env.*
 .ai-workspace
 coverage
 **/coverage
