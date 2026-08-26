@@ -1,4 +1,4 @@
-import { createHarness, Harness } from './app-harness'
+import { createHarness, errorCode, Harness } from './app-harness'
 
 /**
  * Les mutations de topics exigent un `domainId` explicite, parce que
@@ -33,9 +33,6 @@ const SELECT_TOPIC = `
   mutation ($domainId: ID!, $id: ID!) { selectTopic(domainId: $domainId, id: $id) { id status } }`
 const DELETE_TOPIC = `
   mutation ($domainId: ID!, $id: ID!) { deleteTopic(domainId: $domainId, id: $id) }`
-
-const errorCode = (body: any): string =>
-  body.errors?.[0]?.extensions?.code ?? body.errors?.[0]?.code
 
 async function signUp(email: string): Promise<string[]> {
   const res = await h.gql(REGISTER, {
