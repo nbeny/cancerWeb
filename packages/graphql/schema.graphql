@@ -139,12 +139,16 @@ enum GlobalRole {
   USER
 }
 
+"""Valeur JSON arbitraire, sans schéma fixe."""
+scalar JSON
+
 input LoginInput {
   email: String!
   password: String!
 }
 
 type Mutation {
+  analyzeSeo(articleId: ID!, domainId: ID!): SeoReport!
   approveArticle(domainId: ID!, id: ID!): Article!
   archiveArticle(domainId: ID!, id: ID!): Article!
   createArticle(domainId: ID!, input: CreateArticleInput!): Article!
@@ -182,6 +186,7 @@ type Query {
   domain(id: ID!): Domain!
   domains(page: PageInput): DomainConnection!
   me: User!
+  seoReports(articleId: ID!, domainId: ID!, page: PageInput): SeoReportConnection!
 
   """Horodatage serveur — sonde de disponibilité."""
   serverTime: String!
@@ -200,6 +205,27 @@ enum SearchIntent {
   INFORMATIONAL
   NAVIGATIONAL
   TRANSACTIONAL
+}
+
+type SeoIssue {
+  code: String!
+  field: String
+  message: String!
+  severity: String!
+}
+
+type SeoReport {
+  articleId: ID!
+  computedAt: DateTime!
+  id: ID!
+  issues: [SeoIssue!]!
+  metrics: JSON!
+  score: Int!
+}
+
+type SeoReportConnection {
+  items: [SeoReport!]!
+  totalCount: Int!
 }
 
 enum Tone {
