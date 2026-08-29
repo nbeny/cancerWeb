@@ -139,6 +139,28 @@ export class ArticlesResolver {
     return this.articlesService.archiveArticle(user.id, domainId, id)
   }
 
+  @Mutation(() => Article)
+  @RequireDomainRole(DomainRole.AUTHOR)
+  setArticleCategory(
+    @CurrentUser() user: User,
+    @Args('domainId', { type: () => ID }) domainId: string,
+    @Args('articleId', { type: () => ID }) articleId: string,
+    @Args('categoryId', { type: () => ID, nullable: true }) categoryId?: string | null,
+  ): Promise<Article> {
+    return this.articlesService.setCategory(user.id, domainId, articleId, categoryId ?? null)
+  }
+
+  @Mutation(() => Article)
+  @RequireDomainRole(DomainRole.AUTHOR)
+  setArticleTags(
+    @CurrentUser() user: User,
+    @Args('domainId', { type: () => ID }) domainId: string,
+    @Args('articleId', { type: () => ID }) articleId: string,
+    @Args('tagIds', { type: () => [ID] }) tagIds: string[],
+  ): Promise<Article> {
+    return this.articlesService.setTags(user.id, domainId, articleId, tagIds)
+  }
+
   @Query(() => [ArticleVersion])
   @RequireDomainRole(DomainRole.VIEWER)
   articleVersions(

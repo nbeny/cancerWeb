@@ -8,6 +8,8 @@ export interface Loaders {
   domainById: DataLoader<string, Domain | null>
   categoryById: DataLoader<string, Category | null>
   tagsByArticleId: DataLoader<string, Tag[]>
+  childrenByParentId: DataLoader<string, Category[]>
+  articleCountByCategoryId: DataLoader<string, number>
 }
 
 /**
@@ -60,6 +62,32 @@ export function createLoaders(prisma: PrismaService): Loaders {
         byArticle.get(articleId)?.push(tag)
       }
       return articleIds.map((id) => byArticle.get(id) ?? [])
+    }),
+
+    // `Category.children` (Task 12) : mêmes justifications que les loaders
+    // ci-dessus (une requête batchée plutôt qu'une par parent).
+    childrenByParentId: new DataLoader<string, Category[]>(async (parentIds) => {
+      const rows = await prisma.category.findMany({ where: { parentId: { in: [...parentIds] } } })
+      const byParent = new Map<string, Category[]>(parentIds.map((id) => [id, []]))
+      for (const row of rows) {
+        if (row.parentId) byParent.get(row.parentId)?.push(row)
+      }
+      return parentIds.map((id) => byParent.get(id) ?? [])
+    }),
+
+    // `Category.articleCount` (Task 12) : `groupBy` ramène le compte de
+    // TOUTES les catégories du batch en une seule requête SQL (`GROUP BY
+    // categoryId`), plutôt qu'un `count()` par catégorie.
+    articleCountByCategoryId: new DataLoader<string, number>(async (categoryIds) => {
+      const rows = await prisma.article.groupBy({
+        by: ['categoryId'],
+        where: { categoryId: { in: [...categoryIds] } },
+        _count: { _all: true },
+      })
+      const byCategory = new Map<string, number>(
+        rows.filter((row) => row.categoryId !== null).map((row) => [row.categoryId as string, row._count._all]),
+      )
+      return categoryIds.map((id) => byCategory.get(id) ?? 0)
     }),
   }
 }

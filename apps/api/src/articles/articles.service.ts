@@ -297,6 +297,66 @@ export class ArticlesService {
     })
   }
 
+  // ---------------------------------------------------------------------
+  // Taxonomie (Task 12) — mêmes règles de propriété que `update()` : un
+  // AUTHOR ne peut affecter catégorie/tags que sur ses propres articles ;
+  // EDITOR et OWNER peuvent le faire sur n'importe quel article du domaine.
+  // Catégorie et tags sont revalidés contre LE MÊME `domainId` que l'article
+  // (jamais celui déclaré par le client sans vérification) : une catégorie ou
+  // un tag d'un autre domaine est refusé comme s'il n'existait pas.
+  // ---------------------------------------------------------------------
+
+  async setCategory(userId: string, domainId: string, articleId: string, categoryId: string | null): Promise<Article> {
+    const member = await this.requireMember(userId, domainId)
+    const article = await this.findForUser(userId, domainId, articleId)
+    if (member.role === DomainRole.AUTHOR && article.authorId !== userId) {
+      throw new ForbiddenException('Vous ne pouvez modifier que vos propres articles')
+    }
+
+    if (categoryId) {
+      const category = await this.prisma.category.findFirst({ where: { id: categoryId, domainId } })
+      if (!category) throw new NotFoundException('Catégorie introuvable')
+    }
+
+    return this.prisma.article.update({ where: { id: articleId }, data: { categoryId } })
+  }
+
+  /**
+   * Remplace l'ENSEMBLE des tags de l'article — pas d'ajout incrémental.
+   * `tagIds` vide efface toutes les associations. Les tags eux-mêmes ne sont
+   * jamais supprimés : seules leurs associations `ArticleTag` avec CET
+   * article, devenues orphelines, le sont.
+   */
+  async setTags(userId: string, domainId: string, articleId: string, tagIds: string[]): Promise<Article> {
+    const member = await this.requireMember(userId, domainId)
+    const article = await this.findForUser(userId, domainId, articleId)
+    if (member.role === DomainRole.AUTHOR && article.authorId !== userId) {
+      throw new ForbiddenException('Vous ne pouvez modifier que vos propres articles')
+    }
+
+    const uniqueIds = [...new Set(tagIds)]
+    if (uniqueIds.length > 0) {
+      const validTags = await this.prisma.tag.findMany({
+        where: { id: { in: uniqueIds }, domainId },
+        select: { id: true },
+      })
+      if (validTags.length !== uniqueIds.length) throw new NotFoundException('Tag introuvable')
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.articleTag.deleteMany({ where: { articleId, tagId: { notIn: uniqueIds } } }),
+      ...uniqueIds.map((tagId) =>
+        this.prisma.articleTag.upsert({
+          where: { articleId_tagId: { articleId, tagId } },
+          create: { articleId, tagId },
+          update: {},
+        }),
+      ),
+    ])
+
+    return this.findForUser(userId, domainId, articleId)
+  }
+
   private renderContent(content: string): RenderedContent {
     const ast = parse(content)
     return { renderedHtml: render(ast), wordCount: countWords(ast) }
