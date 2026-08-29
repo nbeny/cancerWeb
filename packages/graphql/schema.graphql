@@ -36,6 +36,10 @@ type ArticleConnection {
   totalCount: Int!
 }
 
+input ArticleFilter {
+  search: String
+}
+
 enum ArticleStatus {
   APPROVED
   ARCHIVED
@@ -182,7 +186,7 @@ input PageInput {
 type Query {
   article(domainId: ID!, id: ID!): Article!
   articleVersions(articleId: ID!, domainId: ID!): [ArticleVersion!]!
-  articles(domainId: ID!, page: PageInput): ArticleConnection!
+  articles(domainId: ID!, filter: ArticleFilter, page: PageInput): ArticleConnection!
   domain(id: ID!): Domain!
   domains(page: PageInput): DomainConnection!
   me: User!

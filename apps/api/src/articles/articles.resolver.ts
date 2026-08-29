@@ -2,7 +2,7 @@ import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
 import { DomainRole, User } from '@prisma/client'
 import { ArticlesService } from './articles.service'
-import { Article, ArticleConnection, ArticleVersion, CreateArticleInput, UpdateArticleInput } from './article.types'
+import { Article, ArticleConnection, ArticleFilter, ArticleVersion, CreateArticleInput, UpdateArticleInput } from './article.types'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { RequireDomainRole } from '../common/decorators/require-domain-role.decorator'
 import { DomainRoleGuard } from '../common/guards/domain-role.guard'
@@ -25,9 +25,10 @@ export class ArticlesResolver {
   articles(
     @CurrentUser() user: User,
     @Args('domainId', { type: () => ID }) domainId: string,
+    @Args('filter', { nullable: true }) filter?: ArticleFilter,
     @Args('page', { nullable: true }) page?: PageInput,
   ): Promise<ArticleConnection> {
-    return this.articlesService.listForDomain(user.id, domainId, page ?? { limit: 20, offset: 0 })
+    return this.articlesService.listForDomain(user.id, domainId, page ?? { limit: 20, offset: 0 }, filter)
   }
 
   @Query(() => Article)

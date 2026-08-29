@@ -104,6 +104,17 @@ export class CreateArticleInput {
   @Field({ defaultValue: true }) @IsBoolean() robotsFollow!: boolean
 }
 
+/**
+ * Filtre de la query `articles`. `search` déclenche la recherche plein
+ * texte (Task 10, `../search.ts`) sur `Article.searchVector` plutôt que le
+ * listing simple par domaine — un champ omis ou vide préserve le
+ * comportement précédent.
+ */
+@InputType()
+export class ArticleFilter {
+  @Field({ nullable: true }) @IsOptional() @IsString() @MaxLength(200) search?: string
+}
+
 @InputType()
 export class UpdateArticleInput {
   @Field(() => ID, { nullable: true }) @IsOptional() @IsString() categoryId?: string

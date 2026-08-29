@@ -3,10 +3,11 @@ import { Article, ArticleStatus, ArticleVersion, DomainMember, DomainRole, Prism
 import { PrismaService } from '../prisma/prisma.service'
 import { slugify } from '../common/slug'
 import { parse, render, countWords } from '../markdown'
-import { CreateArticleInput, UpdateArticleInput } from './article.types'
+import { ArticleFilter, CreateArticleInput, UpdateArticleInput } from './article.types'
 import { PageInput } from '../common/dto/page.input'
 import { VersionsService } from './versions.service'
 import { canTransition } from './transitions'
+import { searchArticles } from './search'
 
 interface RenderedContent {
   renderedHtml: string
@@ -78,13 +79,26 @@ export class ArticlesService {
     })
   }
 
-  /** Ne retourne que les articles du domaine dont l'utilisateur est membre. */
+  /**
+   * Ne retourne que les articles du domaine dont l'utilisateur est membre.
+   *
+   * `filter.search` non vide bascule sur la recherche plein texte (Task 10,
+   * `./search.ts`) plutôt que le listing chronologique : ce sont deux
+   * requêtes SQL différentes (l'une triée par date, l'autre par pertinence),
+   * pas la même requête avec une clause `WHERE` en plus.
+   */
   async listForDomain(
     userId: string,
     domainId: string,
     page: PageInput,
+    filter?: ArticleFilter,
   ): Promise<{ items: Article[]; totalCount: number }> {
     await this.requireMember(userId, domainId)
+
+    if (filter?.search?.trim()) {
+      return searchArticles(this.prisma, userId, domainId, filter.search, page)
+    }
+
     const where: Prisma.ArticleWhereInput = { domainId }
     const [items, totalCount] = await this.prisma.$transaction([
       this.prisma.article.findMany({ where, orderBy: { createdAt: 'desc' }, take: page.limit, skip: page.offset }),
