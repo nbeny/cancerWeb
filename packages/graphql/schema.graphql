@@ -3,13 +3,16 @@
 # ------------------------------------------------------
 
 type Article {
+  author: User!
   authorId: ID!
   canonicalUrl: String
+  category: Category
   categoryId: ID
   content: String!
   coverImageUrl: String
   createdAt: DateTime!
   currentVersion: Int!
+  domain: Domain!
   domainId: ID!
   excerpt: String
   focusKeyword: String
@@ -25,6 +28,7 @@ type Article {
   seoTitle: String
   slug: String!
   status: ArticleStatus!
+  tags: [Tag!]!
   title: String!
   topicId: ID
   updatedAt: DateTime!
@@ -62,6 +66,16 @@ type ArticleVersion {
 
 type AuthPayload {
   user: User!
+}
+
+type Category {
+  description: String
+  domainId: ID!
+  id: ID!
+  name: String!
+  parent: Category
+  parentId: ID
+  slug: String!
 }
 
 input CreateArticleInput {
@@ -230,6 +244,13 @@ type SeoReport {
 type SeoReportConnection {
   items: [SeoReport!]!
   totalCount: Int!
+}
+
+type Tag {
+  domainId: ID!
+  id: ID!
+  name: String!
+  slug: String!
 }
 
 enum Tone {

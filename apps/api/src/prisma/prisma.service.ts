@@ -1,8 +1,19 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, Prisma } from '@prisma/client'
 
+/**
+ * `log: [{ emit: 'event', level: 'query' }]` active `$on('query', ...)` —
+ * requis par `n-plus-one.int-spec.ts` pour compter les requêtes SQL
+ * réellement émises pendant une requête GraphQL. Le second paramètre
+ * générique (`'query'`) est ce qui donne à `$on` sa signature typée pour cet
+ * événement ; sans lui, `$on('query', ...)` compile mais n'est jamais émis.
+ */
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService extends PrismaClient<Prisma.PrismaClientOptions, 'query'> implements OnModuleInit, OnModuleDestroy {
+  constructor() {
+    super({ log: [{ emit: 'event', level: 'query' }] })
+  }
+
   async onModuleInit(): Promise<void> {
     await this.$connect()
   }

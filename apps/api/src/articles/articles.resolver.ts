@@ -1,12 +1,18 @@
-import { Args, ID, Int, Mutation, Query, Resolver } from '@nestjs/graphql'
+import { Args, ID, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
-import { DomainRole, User } from '@prisma/client'
+import { DomainRole, User, Domain } from '@prisma/client'
 import { ArticlesService } from './articles.service'
 import { Article, ArticleConnection, ArticleFilter, ArticleVersion, CreateArticleInput, UpdateArticleInput } from './article.types'
+import { Category } from './category.types'
+import { Tag } from './tag.types'
+import { User as UserGqlType } from '../users/user.type'
+import { Domain as DomainGqlType } from '../domains/domain.types'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
+import { CurrentLoaders } from '../common/decorators/loaders.decorator'
 import { RequireDomainRole } from '../common/decorators/require-domain-role.decorator'
 import { DomainRoleGuard } from '../common/guards/domain-role.guard'
 import { PageInput } from '../common/dto/page.input'
+import type { Loaders } from '../common/dataloader/loaders'
 
 // Mutations de transition (Task 7-8) : le rôle minimum requis sur chaque
 // mutation correspond au rôle minimum du bord du diagramme qu'elle emprunte
@@ -163,5 +169,42 @@ export class ArticlesResolver {
     @Args('version', { type: () => Int }) version: number,
   ): Promise<Article> {
     return this.articlesService.restoreVersion(user.id, domainId, articleId, version)
+  }
+
+  // ---------------------------------------------------------------------
+  // Champs imbriqués (Task 11) — premiers de tout le schéma. Chargés via
+  // les DataLoader posés dans le contexte GraphQL (un par requête, voir
+  // `common/dataloader/loaders.ts`) : sans eux, lister N articles avec leurs
+  // relations émettrait N+1 requêtes Prisma (voir `n-plus-one.int-spec.ts`).
+  //
+  // Aucun `@RequireDomainRole` ici : ces champs n'ont pas d'argument
+  // `domainId`/`id` propre pour que `DomainRoleGuard` puisse le résoudre
+  // (il lit `args.domainId ?? args.id`, absents sur un `@ResolveField`). Ce
+  // n'est pas un trou d'autorisation : on n'atteint jamais ces resolvers
+  // sans être déjà passé par `articles`/`article`, qui ont, eux, vérifié
+  // l'appartenance au domaine de L'ARTICLE PARENT — la seule chose que ces
+  // champs révèlent est son auteur, son domaine, sa catégorie ou ses tags,
+  // déjà accessibles via les champs scalaires `authorId`/`domainId`/etc.
+  // ---------------------------------------------------------------------
+
+  @ResolveField(() => UserGqlType)
+  author(@Parent() article: Article, @CurrentLoaders() loaders: Loaders): Promise<User | null> {
+    return loaders.userById.load(article.authorId)
+  }
+
+  @ResolveField(() => DomainGqlType)
+  domain(@Parent() article: Article, @CurrentLoaders() loaders: Loaders): Promise<Domain | null> {
+    return loaders.domainById.load(article.domainId)
+  }
+
+  @ResolveField(() => Category, { nullable: true })
+  category(@Parent() article: Article, @CurrentLoaders() loaders: Loaders): Promise<Category | null> {
+    if (!article.categoryId) return Promise.resolve(null)
+    return loaders.categoryById.load(article.categoryId)
+  }
+
+  @ResolveField(() => [Tag])
+  tags(@Parent() article: Article, @CurrentLoaders() loaders: Loaders): Promise<Tag[]> {
+    return loaders.tagsByArticleId.load(article.id)
   }
 }

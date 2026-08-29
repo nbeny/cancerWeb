@@ -9,8 +9,18 @@ import { join } from 'node:path'
 import type { Request, Response } from 'express'
 import { Env } from '../config/env'
 import { Public } from '../common/decorators/public.decorator'
+import { PrismaService } from '../prisma/prisma.service'
+import { createLoaders, Loaders } from '../common/dataloader/loaders'
 
-export interface GqlContext { req: Request; res: Response }
+interface IncomingContext { req: Request; res: Response }
+
+/**
+ * `loaders` n'existe pas encore sur la requête entrante (`IncomingContext`,
+ * ci-dessus) : c'est `context()` ci-dessous qui les construit, une fois par
+ * requête GraphQL — jamais partagés entre requêtes (voir
+ * `common/dataloader/loaders.ts`).
+ */
+export interface GqlContext extends IncomingContext { loaders: Loaders }
 
 @Resolver()
 class RootResolver {
@@ -27,8 +37,8 @@ class RootResolver {
   imports: [
     NestGraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>) => ({
+      inject: [ConfigService, PrismaService],
+      useFactory: (config: ConfigService<Env, true>, prisma: PrismaService) => ({
         // En production, l'image d'exécution ne contient pas packages/ (seul
         // apps/api en est extrait) : écrire le SDL sur disque ferait planter
         // le conteneur au démarrage. NestJS sait garder le schéma en mémoire
@@ -42,7 +52,7 @@ class RootResolver {
         sortSchema: true,
         playground: false,
         introspection: config.get('NODE_ENV') !== 'production',
-        context: ({ req, res }: GqlContext) => ({ req, res }),
+        context: ({ req, res }: IncomingContext): GqlContext => ({ req, res, loaders: createLoaders(prisma) }),
         validationRules: [depthLimit(config.get('GRAPHQL_MAX_DEPTH'))],
         // `extensions.code` est l'emplacement standard GraphQL pour un code
         // d'erreur machine-readable (voir apps/web/src/lib/graphql-error.ts,
