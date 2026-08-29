@@ -78,6 +78,16 @@ export class UpdateDomainInput {
   @Field({ nullable: true }) @ValidateIf(skipIfOmitted) @IsString() @Length(2, 80) name?: string
   @Field({ nullable: true }) @IsOptional() @IsString() @MaxLength(500) description?: string
   @Field({ nullable: true }) @ValidateIf(skipIfOmitted) @IsIn(SUPPORTED_LANGUAGES as unknown as string[]) language?: string
+  // Même validation qu'à la création (voir CreateDomainInput.country juste
+  // au-dessus) : absente ici jusqu'à cette tâche, une asymétrie non
+  // intentionnelle (Dette du Lot 0). `@IsOptional()`, pas `@ValidateIf` : la
+  // colonne est nullable, `country` fait partie des champs effaçables listés
+  // dans le commentaire ci-dessus.
+  @Field(() => String, { nullable: true })
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.toUpperCase() : value))
+  @IsIn(ISO_3166_1_ALPHA_2, { message: 'country doit être un code ISO 3166-1 alpha-2 valide' })
+  country?: string
   @Field(() => Tone, { nullable: true }) @ValidateIf(skipIfOmitted) @IsEnum(Tone) tone?: Tone
   @Field(() => ExpertiseLevel, { nullable: true }) @ValidateIf(skipIfOmitted) @IsEnum(ExpertiseLevel) expertiseLevel?: ExpertiseLevel
   @Field(() => [String], { nullable: true }) @ValidateIf(skipIfOmitted) @ArrayMaxSize(20) targetAudience?: string[]

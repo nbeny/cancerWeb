@@ -337,6 +337,7 @@ input UpdateCategoryInput {
 input UpdateDomainInput {
   aiInstructions: String
   autoPublish: Boolean
+  country: String
   description: String
   excludedTopics: [String!]
   expertiseLevel: ExpertiseLevel
