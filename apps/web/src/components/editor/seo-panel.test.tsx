@@ -8,6 +8,7 @@ function report(overrides: Partial<SeoReportFieldsFragment> = {}): SeoReportFiel
     id: 'r1',
     articleId: 'a1',
     score: 82,
+    cappedBy: [],
     computedAt: '2026-01-01T00:00:00.000Z',
     metrics: { seoTitleLength: 42 },
     issues: [],
@@ -35,6 +36,7 @@ describe('SeoPanel', () => {
   it('explique le plafonnement à 60 avec le nombre de fautes bloquantes', () => {
     const withBlocking = report({
       score: 60,
+      cappedBy: ['META_DESCRIPTION_MISSING'],
       issues: [
         { code: 'META_DESCRIPTION_MISSING', severity: 'BLOCKING', message: 'Meta description absente', field: 'metaDescription' },
       ],
@@ -46,6 +48,7 @@ describe('SeoPanel', () => {
   it('accorde au pluriel avec plusieurs fautes bloquantes', () => {
     const withBlocking = report({
       score: 60,
+      cappedBy: ['A', 'B'],
       issues: [
         { code: 'A', severity: 'BLOCKING', message: 'x', field: null },
         { code: 'B', severity: 'BLOCKING', message: 'y', field: null },

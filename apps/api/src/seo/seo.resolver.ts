@@ -1,8 +1,9 @@
-import { Args, ID, Mutation, Query, Resolver } from '@nestjs/graphql'
+import { Args, ID, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
 import { DomainRole, User } from '@prisma/client'
 import { SeoService } from './seo.service'
 import { SeoReport, SeoReportConnection } from './seo.types'
+import { blockingCodes } from './analyzer'
 import { CurrentUser } from '../common/decorators/current-user.decorator'
 import { RequireDomainRole } from '../common/decorators/require-domain-role.decorator'
 import { DomainRoleGuard } from '../common/guards/domain-role.guard'
@@ -41,5 +42,20 @@ export class SeoResolver {
     @Args('page', { nullable: true }) page?: PageInput,
   ): Promise<SeoReportConnection> {
     return this.seoService.listReports(user.id, domainId, articleId, page ?? { limit: 20, offset: 0 })
+  }
+
+  // Pas déclaré comme propriété de classe dans `seo.types.ts` : même motif
+  // que `Category.parent`/`children`/`articleCount` (voir leur jsdoc) — un
+  // `@ResolveField` pur suffit à NestJS GraphQL (code-first) pour l'ajouter
+  // au SDL. `cappedBy` n'est PAS persisté en base (ni dans `issues` ni dans
+  // `metrics`, voir le rapport de tâche pour la justification de ce choix) :
+  // il est recalculé ici à partir des `issues` déjà persistées, via
+  // `blockingCodes`, LA MÊME fonction que celle utilisée par l'analyseur pur
+  // au moment du calcul (`analyzer.ts`). Aucune divergence possible entre le
+  // score plafonné stocké et ce que ce champ expose : une seule définition de
+  // « qu'est-ce qui plafonne », réutilisée en écriture comme en lecture.
+  @ResolveField(() => [String])
+  cappedBy(@Parent() report: SeoReport): string[] {
+    return blockingCodes(report.issues)
   }
 }

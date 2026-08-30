@@ -30,6 +30,23 @@ export const CRITERION_WEIGHTS: Record<string, number> = {
 
 type Criterion = (ast: Root, ctx: SeoContext) => CriterionResult
 
+/**
+ * Codes des fautes bloquantes d'une liste d'issues — exactement celles qui
+ * plafonnent le score à 60 (voir la jsdoc de `analyze` ci-dessous). Exportée
+ * pour rester l'UNIQUE définition de « qu'est-ce qui plafonne » : le
+ * résolveur GraphQL `SeoReport.cappedBy` (voir `seo.resolver.ts`) la
+ * réapplique aux `issues` persistées plutôt que de redéfinir la règle
+ * séparément — si le plafonnement change un jour (seuil différent, faute
+ * bloquante qui ne plafonne plus...), ce module reste le seul à modifier.
+ * Signature volontairement structurelle (`{ code, severity }`, pas
+ * `SeoIssue`) : elle s'applique aussi bien aux `SeoIssue` internes qu'au
+ * type GraphQL du même nom, qui ne partagent pas le même type TypeScript
+ * pour `severity` (union littérale ici, `string` côté GraphQL).
+ */
+export function blockingCodes(issues: Array<{ code: string; severity: string }>): string[] {
+  return issues.filter((issue) => issue.severity === 'BLOCKING').map((issue) => issue.code)
+}
+
 const CRITERIA: Criterion[] = [
   evaluateTitle,
   evaluateMetaDescription,
@@ -97,10 +114,10 @@ export function analyze(ast: Root, ctx: SeoContext): SeoReportData {
   const earned = applicable.reduce((sum, r) => sum + r.earned, 0)
 
   const issues = results.flatMap((r) => r.issues)
-  const blocking = issues.filter((i) => i.severity === 'BLOCKING')
+  const cappedBy = blockingCodes(issues)
 
   const raw = max > 0 ? Math.round((earned / max) * 100) : 0
-  const score = blocking.length > 0 ? Math.min(raw, 60) : raw
+  const score = cappedBy.length > 0 ? Math.min(raw, 60) : raw
 
   const metrics = results.reduce(
     (acc, r) => Object.assign(acc, r.metrics),
@@ -109,7 +126,7 @@ export function analyze(ast: Root, ctx: SeoContext): SeoReportData {
 
   return {
     score,
-    cappedBy: blocking.map((i) => i.code),
+    cappedBy,
     issues,
     metrics,
   }

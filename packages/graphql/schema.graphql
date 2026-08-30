@@ -276,6 +276,7 @@ type SeoIssue {
 
 type SeoReport {
   articleId: ID!
+  cappedBy: [String!]!
   computedAt: DateTime!
   id: ID!
   issues: [SeoIssue!]!

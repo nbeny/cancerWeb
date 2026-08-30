@@ -1,15 +1,16 @@
-# `SeoReport` n'expose pas `cappedBy` côté GraphQL (voir `apps/api/src/seo/seo.types.ts`) :
-# seul `apps/api/src/seo/analyzer.ts` le calcule en interne, comme
-# `blocking.map((i) => i.code)` — c'est-à-dire EXACTEMENT
-# `issues.filter(i => i.severity === 'BLOCKING').map(i => i.code)`. Le panneau
-# SEO (Task 17) reproduit ce filtre côté client plutôt que de dupliquer une
-# règle métier : ce n'est pas un recalcul (aucune divergence possible, c'est
-# la même liste), seulement une projection des `issues` déjà renvoyées. Voir
-# le rapport de la Task 16-17 pour la mention explicite de cet écart de schéma.
+# `cappedBy` est un champ CALCULÉ côté serveur (`@ResolveField`, voir
+# `apps/api/src/seo/seo.resolver.ts`), dérivé des `issues` persistées via
+# `blockingCodes` — LA MÊME fonction que celle utilisée par l'analyseur pur
+# au moment du calcul (`apps/api/src/seo/analyzer.ts`). Le panneau SEO (Task
+# 17) le consomme directement plutôt que de reproduire le filtre
+# `issues.filter(severity === 'BLOCKING')` côté client : une seule définition
+# de la règle de plafonnement, côté serveur, qui ne peut plus diverger du
+# client.
 fragment SeoReportFields on SeoReport {
   id
   articleId
   score
+  cappedBy
   computedAt
   issues {
     code

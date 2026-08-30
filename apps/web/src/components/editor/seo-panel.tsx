@@ -35,12 +35,11 @@ function scoreColor(score: number): string {
 }
 
 export function SeoPanel({ report, stale, analyzing, analyzeError, onAnalyze, onIssueClick }: Props) {
-  // `cappedBy` n'est pas exposé par le schéma GraphQL (voir `packages/graphql/src/operations/seo.graphql`) :
-  // reconstruit à partir des `issues` déjà reçues, PAS recalculé — c'est
-  // exactement `apps/api/src/seo/analyzer.ts` (`blocking.map((i) => i.code)`),
-  // donc aucune divergence possible entre les deux listes.
-  const cappedBy = report ? report.issues.filter((issue) => issue.severity === 'BLOCKING').map((issue) => issue.code) : []
-  const isCapped = cappedBy.length > 0 && report !== null && report.score <= 60
+  // `cappedBy` est désormais exposé par le schéma GraphQL (champ calculé
+  // côté serveur, voir `apps/api/src/seo/seo.resolver.ts`) : plus besoin de
+  // reproduire ici la règle de plafonnement à partir des `issues`.
+  const cappedBy = report?.cappedBy ?? []
+  const isCapped = cappedBy.length > 0
 
   const grouped = SEVERITY_ORDER.map((severity) => ({
     severity,

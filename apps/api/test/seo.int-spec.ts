@@ -14,7 +14,7 @@ const CREATE_ARTICLE = `
 const ANALYZE = `
   mutation ($domainId: ID!, $articleId: ID!) {
     analyzeSeo(domainId: $domainId, articleId: $articleId) {
-      id score computedAt
+      id score computedAt cappedBy
       issues { code severity message field }
       metrics
     }
@@ -133,6 +133,59 @@ describe('SEO persisté (analyzeSeo / seoReports)', () => {
     // Relu via GraphQL également.
     const gqlMetrics = res.body.data.analyzeSeo.metrics as Record<string, number>
     expect(Object.keys(gqlMetrics).sort()).toEqual([...METRIC_KEYS_WITH_KEYWORD_AND_READABILITY].sort())
+  })
+
+  it("expose cappedBy en GraphQL : un article sans meta description (sinon soigné) est plafonné à 60 et cappedBy liste la faute", async () => {
+    const alice = await signUp('alice@example.com')
+    const domainId = await createDomain(alice.cookies)
+
+    // Article par ailleurs soigné (titre, mot-clé, liens, longueur) pour que
+    // le score BRUT dépasse largement 60 : seule l'absence de meta
+    // description doit expliquer le plafonnement à 60, pas un score
+    // naturellement bas. Reprend la même construction que
+    // `apps/api/src/seo/analyzer.spec.ts` ("plafonne à 60 exactement un
+        // article sans meta description").
+    const keywordSentence = 'Cette randonnée est simple et agréable pour toute la famille.'
+    const fillerSentence = 'Le chat dort sur le tapis chaud et calme de la maison.'
+    const paragraphs = [
+      ...Array.from({ length: 4 }, () => keywordSentence),
+      ...Array.from({ length: 12 }, () => Array.from({ length: 5 }, () => fillerSentence).join(' ')),
+    ]
+    const content = [
+      '# Randonnée en montagne : le guide complet',
+      '',
+      'La randonnée est une activité idéale pour se détendre en plein air et découvrir la nature à pied.',
+      '',
+      '## Bien préparer sa sortie',
+      '',
+      paragraphs.join('\n\n'),
+      '',
+      '## Ressources utiles',
+      '',
+      '[Voir nos conseils](/conseils-randonnee) et [office de tourisme](https://exemple-tourisme.fr)',
+    ].join('\n')
+
+    const article = await createArticle(alice.cookies, domainId, {
+      title: 'Randonnée en montagne : le guide complet',
+      content,
+      seoTitle: 'Guide complet de la randonnée en montagne',
+      focusKeyword: 'randonnée',
+      // metaDescription volontairement absent.
+    })
+
+    const res = await h.gql(ANALYZE, { domainId, articleId: article.id }, alice.cookies)
+    expect(res.body.errors).toBeUndefined()
+
+    const report = res.body.data.analyzeSeo
+    expect(report.score).toBe(60)
+    expect(report.cappedBy).toEqual(['META_DESCRIPTION_MISSING'])
+    // `cappedBy` dérive des `issues` (voir `apps/api/src/seo/analyzer.ts`,
+    // `blockingCodes`, réutilisée par le résolveur) : cohérent avec la liste
+    // des issues bloquantes réellement renvoyées, pas une valeur indépendante.
+    const blockingIssueCodes = (report.issues as Array<{ code: string; severity: string }>)
+      .filter((issue) => issue.severity === 'BLOCKING')
+      .map((issue) => issue.code)
+    expect(report.cappedBy).toEqual(blockingIssueCodes)
   })
 
   it('atomicité : un échec après la création du rapport annule aussi celle-ci (transaction)', async () => {

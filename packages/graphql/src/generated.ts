@@ -383,7 +383,7 @@ export type DeleteDomainMutationVariables = Exact<{
 
 export type DeleteDomainMutation = { deleteDomain: boolean };
 
-export type SeoReportFieldsFragment = { id: string, articleId: string, score: number, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> };
+export type SeoReportFieldsFragment = { id: string, articleId: string, score: number, cappedBy: Array<string>, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> };
 
 export type AnalyzeSeoMutationVariables = Exact<{
   domainId: string | number;
@@ -391,7 +391,7 @@ export type AnalyzeSeoMutationVariables = Exact<{
 }>;
 
 
-export type AnalyzeSeoMutation = { analyzeSeo: { id: string, articleId: string, score: number, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> } };
+export type AnalyzeSeoMutation = { analyzeSeo: { id: string, articleId: string, score: number, cappedBy: Array<string>, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> } };
 
 export type SeoReportsQueryVariables = Exact<{
   domainId: string | number;
@@ -400,7 +400,7 @@ export type SeoReportsQueryVariables = Exact<{
 }>;
 
 
-export type SeoReportsQuery = { seoReports: { totalCount: number, items: Array<{ id: string, articleId: string, score: number, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> }> } };
+export type SeoReportsQuery = { seoReports: { totalCount: number, items: Array<{ id: string, articleId: string, score: number, cappedBy: Array<string>, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> }> } };
 
 export type TopicFieldsFragment = { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string };
 
@@ -570,6 +570,7 @@ export const SeoReportFieldsFragmentDoc = gql`
   id
   articleId
   score
+  cappedBy
   computedAt
   issues {
     code
