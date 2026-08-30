@@ -2,6 +2,7 @@ fragment DomainFields on Domain {
   id name slug description language country tone expertiseLevel
   targetAudience keywords excludedTopics aiInstructions
   autoPublish reviewOutline createdAt updatedAt
+  myRole
 }
 
 query Domains($page: PageInput) {

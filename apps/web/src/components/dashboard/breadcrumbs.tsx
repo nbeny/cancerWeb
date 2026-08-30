@@ -8,6 +8,7 @@ const LABELS: Record<string, string> = {
   domains: 'Domaines',
   topics: 'Idées',
   articles: 'Articles',
+  categories: 'Catégories',
   new: 'Nouveau',
 }
 

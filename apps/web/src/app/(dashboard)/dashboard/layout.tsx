@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { serverSdk } from '@/lib/graphql-client'
 import { graphqlErrorCode } from '@/lib/graphql-error'
 import { Sidebar } from '@/components/dashboard/sidebar'
@@ -32,7 +32,14 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <ToastProvider>
       <div className="flex min-h-screen bg-slate-50">
-        <Sidebar />
+        {/* `Sidebar` lit `useSearchParams()` (pour reporter `?domainId=...` sur
+            ses propres liens, voir sa jsdoc) : Next.js recommande un
+            `<Suspense>` autour de tout Client Component qui l'utilise, pour
+            ne rendre CE sous-arbre côté client sans bloquer le reste — voir
+            `node_modules/next/dist/docs/01-app/03-api-reference/04-functions/use-search-params.md`. */}
+        <Suspense fallback={<div className="h-full w-60 border-r border-slate-200 bg-white" />}>
+          <Sidebar />
+        </Suspense>
         <div className="flex flex-1 flex-col">
           <Header userName={userName} />
           <Breadcrumbs />

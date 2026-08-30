@@ -53,6 +53,12 @@ export type CreateArticleInput = {
   topicId?: string | number | null | undefined;
 };
 
+export type CreateCategoryInput = {
+  description?: string | null | undefined;
+  name: string;
+  parentId?: string | number | null | undefined;
+};
+
 export type CreateDomainInput = {
   aiInstructions?: string | null | undefined;
   country?: string | null | undefined;
@@ -64,6 +70,10 @@ export type CreateDomainInput = {
   name: string;
   targetAudience?: Array<string>;
   tone?: Tone;
+};
+
+export type CreateTagInput = {
+  name: string;
 };
 
 export type CreateTopicInput = {
@@ -145,6 +155,12 @@ export type UpdateArticleInput = {
   secondaryKeywords?: Array<string> | null | undefined;
   seoTitle?: string | null | undefined;
   title?: string | null | undefined;
+};
+
+export type UpdateCategoryInput = {
+  description?: string | null | undefined;
+  name?: string | null | undefined;
+  parentId?: string | number | null | undefined;
 };
 
 export type UpdateDomainInput = {
@@ -351,28 +367,28 @@ export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type MeQuery = { me: { id: string, email: string, name: string, slug: string, globalRole: GlobalRole, createdAt: string } };
 
-export type DomainFieldsFragment = { id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string };
+export type DomainFieldsFragment = { id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string, myRole: DomainRole };
 
 export type DomainsQueryVariables = Exact<{
   page?: PageInput | null | undefined;
 }>;
 
 
-export type DomainsQuery = { domains: { totalCount: number, items: Array<{ id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string }> } };
+export type DomainsQuery = { domains: { totalCount: number, items: Array<{ id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string, myRole: DomainRole }> } };
 
 export type DomainByIdQueryVariables = Exact<{
   id: string | number;
 }>;
 
 
-export type DomainByIdQuery = { domain: { id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string } };
+export type DomainByIdQuery = { domain: { id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string, myRole: DomainRole } };
 
 export type CreateDomainMutationVariables = Exact<{
   input: CreateDomainInput;
 }>;
 
 
-export type CreateDomainMutation = { createDomain: { id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string } };
+export type CreateDomainMutation = { createDomain: { id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string, myRole: DomainRole } };
 
 export type UpdateDomainMutationVariables = Exact<{
   id: string | number;
@@ -380,7 +396,7 @@ export type UpdateDomainMutationVariables = Exact<{
 }>;
 
 
-export type UpdateDomainMutation = { updateDomain: { id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string } };
+export type UpdateDomainMutation = { updateDomain: { id: string, name: string, slug: string, description: string | null, language: string, country: string | null, tone: Tone, expertiseLevel: ExpertiseLevel, targetAudience: Array<string>, keywords: Array<string>, excludedTopics: Array<string>, aiInstructions: string | null, autoPublish: boolean, reviewOutline: boolean, createdAt: string, updatedAt: string, myRole: DomainRole } };
 
 export type DeleteDomainMutationVariables = Exact<{
   id: string | number;
@@ -407,6 +423,65 @@ export type SeoReportsQueryVariables = Exact<{
 
 
 export type SeoReportsQuery = { seoReports: { totalCount: number, items: Array<{ id: string, articleId: string, score: number, cappedBy: Array<string>, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> }> } };
+
+export type CategoryFieldsFragment = { id: string, domainId: string, name: string, slug: string, description: string | null, parentId: string | null, articleCount: number };
+
+export type TagFieldsFragment = { id: string, domainId: string, name: string, slug: string };
+
+export type CategoriesQueryVariables = Exact<{
+  domainId: string | number;
+}>;
+
+
+export type CategoriesQuery = { categories: Array<{ id: string, domainId: string, name: string, slug: string, description: string | null, parentId: string | null, articleCount: number }> };
+
+export type CreateCategoryMutationVariables = Exact<{
+  domainId: string | number;
+  input: CreateCategoryInput;
+}>;
+
+
+export type CreateCategoryMutation = { createCategory: { id: string, domainId: string, name: string, slug: string, description: string | null, parentId: string | null, articleCount: number } };
+
+export type UpdateCategoryMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+  input: UpdateCategoryInput;
+}>;
+
+
+export type UpdateCategoryMutation = { updateCategory: { id: string, domainId: string, name: string, slug: string, description: string | null, parentId: string | null, articleCount: number } };
+
+export type DeleteCategoryMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type DeleteCategoryMutation = { deleteCategory: boolean };
+
+export type TagsQueryVariables = Exact<{
+  domainId: string | number;
+}>;
+
+
+export type TagsQuery = { tags: Array<{ id: string, domainId: string, name: string, slug: string }> };
+
+export type CreateTagMutationVariables = Exact<{
+  domainId: string | number;
+  input: CreateTagInput;
+}>;
+
+
+export type CreateTagMutation = { createTag: { id: string, domainId: string, name: string, slug: string } };
+
+export type DeleteTagMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type DeleteTagMutation = { deleteTag: boolean };
 
 export type TopicFieldsFragment = { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string };
 
@@ -573,6 +648,7 @@ export const DomainFieldsFragmentDoc = gql`
   reviewOutline
   createdAt
   updatedAt
+  myRole
 }
     `;
 export const SeoReportFieldsFragmentDoc = gql`
@@ -589,6 +665,25 @@ export const SeoReportFieldsFragmentDoc = gql`
     field
   }
   metrics
+}
+    `;
+export const CategoryFieldsFragmentDoc = gql`
+    fragment CategoryFields on Category {
+  id
+  domainId
+  name
+  slug
+  description
+  parentId
+  articleCount
+}
+    `;
+export const TagFieldsFragmentDoc = gql`
+    fragment TagFields on Tag {
+  id
+  domainId
+  name
+  slug
 }
     `;
 export const TopicFieldsFragmentDoc = gql`
@@ -867,6 +962,51 @@ export const SeoReportsDocument = gql`
   }
 }
     ${SeoReportFieldsFragmentDoc}`;
+export const CategoriesDocument = gql`
+    query Categories($domainId: ID!) {
+  categories(domainId: $domainId) {
+    ...CategoryFields
+  }
+}
+    ${CategoryFieldsFragmentDoc}`;
+export const CreateCategoryDocument = gql`
+    mutation CreateCategory($domainId: ID!, $input: CreateCategoryInput!) {
+  createCategory(domainId: $domainId, input: $input) {
+    ...CategoryFields
+  }
+}
+    ${CategoryFieldsFragmentDoc}`;
+export const UpdateCategoryDocument = gql`
+    mutation UpdateCategory($domainId: ID!, $id: ID!, $input: UpdateCategoryInput!) {
+  updateCategory(domainId: $domainId, id: $id, input: $input) {
+    ...CategoryFields
+  }
+}
+    ${CategoryFieldsFragmentDoc}`;
+export const DeleteCategoryDocument = gql`
+    mutation DeleteCategory($domainId: ID!, $id: ID!) {
+  deleteCategory(domainId: $domainId, id: $id)
+}
+    `;
+export const TagsDocument = gql`
+    query Tags($domainId: ID!) {
+  tags(domainId: $domainId) {
+    ...TagFields
+  }
+}
+    ${TagFieldsFragmentDoc}`;
+export const CreateTagDocument = gql`
+    mutation CreateTag($domainId: ID!, $input: CreateTagInput!) {
+  createTag(domainId: $domainId, input: $input) {
+    ...TagFields
+  }
+}
+    ${TagFieldsFragmentDoc}`;
+export const DeleteTagDocument = gql`
+    mutation DeleteTag($domainId: ID!, $id: ID!) {
+  deleteTag(domainId: $domainId, id: $id)
+}
+    `;
 export const TopicsDocument = gql`
     query Topics($domainId: ID!, $page: PageInput, $status: TopicStatus) {
   topics(domainId: $domainId, page: $page, status: $status) {
@@ -951,6 +1091,13 @@ const UpdateDomainDocumentString = print(UpdateDomainDocument);
 const DeleteDomainDocumentString = print(DeleteDomainDocument);
 const AnalyzeSeoDocumentString = print(AnalyzeSeoDocument);
 const SeoReportsDocumentString = print(SeoReportsDocument);
+const CategoriesDocumentString = print(CategoriesDocument);
+const CreateCategoryDocumentString = print(CreateCategoryDocument);
+const UpdateCategoryDocumentString = print(UpdateCategoryDocument);
+const DeleteCategoryDocumentString = print(DeleteCategoryDocument);
+const TagsDocumentString = print(TagsDocument);
+const CreateTagDocumentString = print(CreateTagDocument);
+const DeleteTagDocumentString = print(DeleteTagDocument);
 const TopicsDocumentString = print(TopicsDocument);
 const TopicByIdDocumentString = print(TopicByIdDocument);
 const CreateTopicDocumentString = print(CreateTopicDocument);
@@ -1046,6 +1193,27 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     SeoReports(variables: SeoReportsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SeoReportsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<SeoReportsQuery>(SeoReportsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SeoReports', 'query', variables);
+    },
+    Categories(variables: CategoriesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CategoriesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CategoriesQuery>(CategoriesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Categories', 'query', variables);
+    },
+    CreateCategory(variables: CreateCategoryMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateCategoryMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateCategoryMutation>(CreateCategoryDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateCategory', 'mutation', variables);
+    },
+    UpdateCategory(variables: UpdateCategoryMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UpdateCategoryMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UpdateCategoryMutation>(UpdateCategoryDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateCategory', 'mutation', variables);
+    },
+    DeleteCategory(variables: DeleteCategoryMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteCategoryMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteCategoryMutation>(DeleteCategoryDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteCategory', 'mutation', variables);
+    },
+    Tags(variables: TagsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TagsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<TagsQuery>(TagsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Tags', 'query', variables);
+    },
+    CreateTag(variables: CreateTagMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateTagMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateTagMutation>(CreateTagDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTag', 'mutation', variables);
+    },
+    DeleteTag(variables: DeleteTagMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteTagMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteTagMutation>(DeleteTagDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteTag', 'mutation', variables);
     },
     Topics(variables: TopicsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TopicsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<TopicsQuery>(TopicsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Topics', 'query', variables);

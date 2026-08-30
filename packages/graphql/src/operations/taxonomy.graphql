@@ -1,0 +1,53 @@
+# Task 18 — écrans de taxonomie (catégories hiérarchiques, tags).
+#
+# `CategoryFields` porte `parentId` (pour reconstruire l'arborescence côté
+# client à partir de la liste plate renvoyée par `categories`, voir
+# `category-tree.tsx`) et `articleCount` (`@ResolveField` batché par
+# DataLoader, voir `apps/api/src/articles/category.resolver.ts`) : nécessaire
+# pour avertir AVANT suppression du nombre d'articles qui perdront leur
+# catégorie (mise à `null`, jamais supprimés).
+
+fragment CategoryFields on Category {
+  id
+  domainId
+  name
+  slug
+  description
+  parentId
+  articleCount
+}
+
+fragment TagFields on Tag {
+  id
+  domainId
+  name
+  slug
+}
+
+query Categories($domainId: ID!) {
+  categories(domainId: $domainId) { ...CategoryFields }
+}
+
+mutation CreateCategory($domainId: ID!, $input: CreateCategoryInput!) {
+  createCategory(domainId: $domainId, input: $input) { ...CategoryFields }
+}
+
+mutation UpdateCategory($domainId: ID!, $id: ID!, $input: UpdateCategoryInput!) {
+  updateCategory(domainId: $domainId, id: $id, input: $input) { ...CategoryFields }
+}
+
+mutation DeleteCategory($domainId: ID!, $id: ID!) {
+  deleteCategory(domainId: $domainId, id: $id)
+}
+
+query Tags($domainId: ID!) {
+  tags(domainId: $domainId) { ...TagFields }
+}
+
+mutation CreateTag($domainId: ID!, $input: CreateTagInput!) {
+  createTag(domainId: $domainId, input: $input) { ...TagFields }
+}
+
+mutation DeleteTag($domainId: ID!, $id: ID!) {
+  deleteTag(domainId: $domainId, id: $id)
+}
