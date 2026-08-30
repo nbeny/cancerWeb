@@ -7,6 +7,7 @@ const LABELS: Record<string, string> = {
   dashboard: 'Vue d’ensemble',
   domains: 'Domaines',
   topics: 'Idées',
+  articles: 'Articles',
   new: 'Nouveau',
 }
 

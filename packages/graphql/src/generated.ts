@@ -6,6 +6,10 @@ import { GraphQLClient, type RequestOptions } from 'graphql-request';
 import { GraphQLError, print } from 'graphql'
 import gql from 'graphql-tag';
 type GraphQLClientRequestHeaders = RequestOptions['requestHeaders'];
+export type ArticleFilter = {
+  search?: string | null | undefined;
+};
+
 export type ArticleStatus =
   | 'APPROVED'
   | 'ARCHIVED'
@@ -124,6 +128,17 @@ export type UpdateTopicInput = {
   title?: string | null | undefined;
 };
 
+export type ArticleListFieldsFragment = { id: string, title: string, slug: string, status: ArticleStatus, latestSeoScore: number | null, createdAt: string, updatedAt: string, publishedAt: string | null, author: { id: string, name: string }, category: { id: string, name: string } | null };
+
+export type ArticlesQueryVariables = Exact<{
+  domainId: string | number;
+  filter?: ArticleFilter | null | undefined;
+  page?: PageInput | null | undefined;
+}>;
+
+
+export type ArticlesQuery = { articles: { totalCount: number, items: Array<{ id: string, title: string, slug: string, status: ArticleStatus, latestSeoScore: number | null, createdAt: string, updatedAt: string, publishedAt: string | null, author: { id: string, name: string }, category: { id: string, name: string } | null }> } };
+
 export type CreateArticleMutationVariables = Exact<{
   domainId: string | number;
   input: CreateArticleInput;
@@ -131,6 +146,13 @@ export type CreateArticleMutationVariables = Exact<{
 
 
 export type CreateArticleMutation = { createArticle: { id: string, title: string, slug: string, status: ArticleStatus } };
+
+export type ArticleCategoriesQueryVariables = Exact<{
+  domainId: string | number;
+}>;
+
+
+export type ArticleCategoriesQuery = { categories: Array<{ id: string, name: string, slug: string }> };
 
 export type LoginMutationVariables = Exact<{
   input: LoginInput;
@@ -259,6 +281,26 @@ export type DeleteTopicMutationVariables = Exact<{
 
 export type DeleteTopicMutation = { deleteTopic: boolean };
 
+export const ArticleListFieldsFragmentDoc = gql`
+    fragment ArticleListFields on Article {
+  id
+  title
+  slug
+  status
+  latestSeoScore
+  createdAt
+  updatedAt
+  publishedAt
+  author {
+    id
+    name
+  }
+  category {
+    id
+    name
+  }
+}
+    `;
 export const DomainFieldsFragmentDoc = gql`
     fragment DomainFields on Domain {
   id
@@ -296,6 +338,16 @@ export const TopicFieldsFragmentDoc = gql`
   updatedAt
 }
     `;
+export const ArticlesDocument = gql`
+    query Articles($domainId: ID!, $filter: ArticleFilter, $page: PageInput) {
+  articles(domainId: $domainId, filter: $filter, page: $page) {
+    items {
+      ...ArticleListFields
+    }
+    totalCount
+  }
+}
+    ${ArticleListFieldsFragmentDoc}`;
 export const CreateArticleDocument = gql`
     mutation CreateArticle($domainId: ID!, $input: CreateArticleInput!) {
   createArticle(domainId: $domainId, input: $input) {
@@ -303,6 +355,15 @@ export const CreateArticleDocument = gql`
     title
     slug
     status
+  }
+}
+    `;
+export const ArticleCategoriesDocument = gql`
+    query ArticleCategories($domainId: ID!) {
+  categories(domainId: $domainId) {
+    id
+    name
+    slug
   }
 }
     `;
@@ -450,7 +511,9 @@ export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, str
 
 
 const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) => action();
+const ArticlesDocumentString = print(ArticlesDocument);
 const CreateArticleDocumentString = print(CreateArticleDocument);
+const ArticleCategoriesDocumentString = print(ArticleCategoriesDocument);
 const LoginDocumentString = print(LoginDocument);
 const RegisterDocumentString = print(RegisterDocument);
 const RefreshDocumentString = print(RefreshDocument);
@@ -470,8 +533,14 @@ const RejectTopicDocumentString = print(RejectTopicDocument);
 const DeleteTopicDocumentString = print(DeleteTopicDocument);
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
+    Articles(variables: ArticlesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArticlesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArticlesQuery>(ArticlesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Articles', 'query', variables);
+    },
     CreateArticle(variables: CreateArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateArticleMutation>(CreateArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateArticle', 'mutation', variables);
+    },
+    ArticleCategories(variables: ArticleCategoriesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArticleCategoriesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArticleCategoriesQuery>(ArticleCategoriesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ArticleCategories', 'query', variables);
     },
     Login(variables: LoginMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LoginMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LoginMutation>(LoginDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Login', 'mutation', variables);

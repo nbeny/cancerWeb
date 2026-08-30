@@ -1,8 +1,42 @@
+fragment ArticleListFields on Article {
+  id
+  title
+  slug
+  status
+  latestSeoScore
+  createdAt
+  updatedAt
+  publishedAt
+  author { id name }
+  category { id name }
+}
+
+# `filter` ne porte que `search` côté API (recherche plein texte sur
+# `Article.searchVector`, voir Task 10) : il n'existe pas de filtre serveur
+# par statut/auteur/catégorie/score, ni de paramètre de tri. La page
+# `/dashboard/articles` complète donc côté client (statut, auteur, catégorie,
+# score minimum, tri) au-dessus du lot renvoyé par cette requête — voir le
+# commentaire dans `articles/page.tsx` pour le détail et ses limites.
+query Articles($domainId: ID!, $filter: ArticleFilter, $page: PageInput) {
+  articles(domainId: $domainId, filter: $filter, page: $page) {
+    items { ...ArticleListFields }
+    totalCount
+  }
+}
+
 mutation CreateArticle($domainId: ID!, $input: CreateArticleInput!) {
   createArticle(domainId: $domainId, input: $input) {
     id
     title
     slug
     status
+  }
+}
+
+query ArticleCategories($domainId: ID!) {
+  categories(domainId: $domainId) {
+    id
+    name
+    slug
   }
 }
