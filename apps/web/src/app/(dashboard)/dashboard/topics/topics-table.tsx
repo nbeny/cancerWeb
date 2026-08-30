@@ -84,11 +84,10 @@ export function TopicsTable({ domainId, topics, totalCount, page, pageSize, empt
         },
       })
       showToast({ title: 'Article créé, rédaction en cours', variant: 'success' })
-      // La page d'édition (`/dashboard/articles/[id]`) est livrée à la Task 16 :
-      // cette redirection est intentionnelle même si la page n'existe pas
-      // encore côté frontend (elle rendra le not-found par défaut de Next.js
-      // en attendant).
-      router.push(`/dashboard/articles/${data.createArticle.id}`)
+      // `domainId` conservé dans l'URL de la page d'édition (Task 16), comme
+      // partout ailleurs dans le dashboard : sans lui, `/dashboard/articles/[id]`
+      // ne peut pas savoir avec quel domaine interroger `article(domainId, id)`.
+      router.push(`/dashboard/articles/${data.createArticle.id}?domainId=${domainId}`)
     } catch {
       showToast({ title: 'Échec de la création de l’article', variant: 'error' })
       setBusyId(null)

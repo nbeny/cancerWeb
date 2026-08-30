@@ -126,6 +126,21 @@ export type TopicStatus =
   | 'REJECTED'
   | 'SELECTED';
 
+export type UpdateArticleInput = {
+  canonicalUrl?: string | null | undefined;
+  categoryId?: string | number | null | undefined;
+  content?: string | null | undefined;
+  coverImageUrl?: string | null | undefined;
+  excerpt?: string | null | undefined;
+  focusKeyword?: string | null | undefined;
+  metaDescription?: string | null | undefined;
+  robotsFollow?: boolean | null | undefined;
+  robotsIndex?: boolean | null | undefined;
+  secondaryKeywords?: Array<string> | null | undefined;
+  seoTitle?: string | null | undefined;
+  title?: string | null | undefined;
+};
+
 export type UpdateDomainInput = {
   aiInstructions?: string | null | undefined;
   autoPublish?: boolean | null | undefined;
@@ -177,6 +192,25 @@ export type ArticleCategoriesQueryVariables = Exact<{
 
 
 export type ArticleCategoriesQuery = { categories: Array<{ id: string, name: string, slug: string }> };
+
+export type ArticleEditorFieldsFragment = { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, latestSeoScore: number | null, currentVersion: number, wordCount: number, createdAt: string, updatedAt: string, author: { id: string, name: string } };
+
+export type ArticleQueryVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type ArticleQuery = { article: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, latestSeoScore: number | null, currentVersion: number, wordCount: number, createdAt: string, updatedAt: string, author: { id: string, name: string } } };
+
+export type UpdateArticleMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+  input: UpdateArticleInput;
+}>;
+
+
+export type UpdateArticleMutation = { updateArticle: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, latestSeoScore: number | null, currentVersion: number, wordCount: number, createdAt: string, updatedAt: string, author: { id: string, name: string } } };
 
 export type LoginMutationVariables = Exact<{
   input: LoginInput;
@@ -325,6 +359,26 @@ export const ArticleListFieldsFragmentDoc = gql`
   }
 }
     `;
+export const ArticleEditorFieldsFragmentDoc = gql`
+    fragment ArticleEditorFields on Article {
+  id
+  domainId
+  title
+  slug
+  status
+  content
+  renderedHtml
+  latestSeoScore
+  currentVersion
+  wordCount
+  createdAt
+  updatedAt
+  author {
+    id
+    name
+  }
+}
+    `;
 export const DomainFieldsFragmentDoc = gql`
     fragment DomainFields on Domain {
   id
@@ -391,6 +445,20 @@ export const ArticleCategoriesDocument = gql`
   }
 }
     `;
+export const ArticleDocument = gql`
+    query Article($domainId: ID!, $id: ID!) {
+  article(domainId: $domainId, id: $id) {
+    ...ArticleEditorFields
+  }
+}
+    ${ArticleEditorFieldsFragmentDoc}`;
+export const UpdateArticleDocument = gql`
+    mutation UpdateArticle($domainId: ID!, $id: ID!, $input: UpdateArticleInput!) {
+  updateArticle(domainId: $domainId, id: $id, input: $input) {
+    ...ArticleEditorFields
+  }
+}
+    ${ArticleEditorFieldsFragmentDoc}`;
 export const LoginDocument = gql`
     mutation Login($input: LoginInput!) {
   login(input: $input) {
@@ -538,6 +606,8 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 const ArticlesDocumentString = print(ArticlesDocument);
 const CreateArticleDocumentString = print(CreateArticleDocument);
 const ArticleCategoriesDocumentString = print(ArticleCategoriesDocument);
+const ArticleDocumentString = print(ArticleDocument);
+const UpdateArticleDocumentString = print(UpdateArticleDocument);
 const LoginDocumentString = print(LoginDocument);
 const RegisterDocumentString = print(RegisterDocument);
 const RefreshDocumentString = print(RefreshDocument);
@@ -565,6 +635,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     ArticleCategories(variables: ArticleCategoriesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArticleCategoriesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArticleCategoriesQuery>(ArticleCategoriesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ArticleCategories', 'query', variables);
+    },
+    Article(variables: ArticleQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArticleQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArticleQuery>(ArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Article', 'query', variables);
+    },
+    UpdateArticle(variables: UpdateArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UpdateArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UpdateArticleMutation>(UpdateArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateArticle', 'mutation', variables);
     },
     Login(variables: LoginMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LoginMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LoginMutation>(LoginDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Login', 'mutation', variables);

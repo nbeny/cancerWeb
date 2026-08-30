@@ -41,3 +41,34 @@ query ArticleCategories($domainId: ID!) {
     slug
   }
 }
+
+# ---------------------------------------------------------------------------
+# Éditeur d'article (Task 16). `ArticleEditorFields` porte les champs
+# affichés/édités par l'écran d'édition — contenu et HTML déjà sanitizé côté
+# serveur (`renderedHtml`, jamais réinterprété côté client). Élargi à la
+# Task 17 avec les métadonnées SEO, la catégorie et les tags.
+# ---------------------------------------------------------------------------
+
+fragment ArticleEditorFields on Article {
+  id
+  domainId
+  title
+  slug
+  status
+  content
+  renderedHtml
+  latestSeoScore
+  currentVersion
+  wordCount
+  createdAt
+  updatedAt
+  author { id name }
+}
+
+query Article($domainId: ID!, $id: ID!) {
+  article(domainId: $domainId, id: $id) { ...ArticleEditorFields }
+}
+
+mutation UpdateArticle($domainId: ID!, $id: ID!, $input: UpdateArticleInput!) {
+  updateArticle(domainId: $domainId, id: $id, input: $input) { ...ArticleEditorFields }
+}

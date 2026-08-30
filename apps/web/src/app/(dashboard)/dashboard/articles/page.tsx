@@ -117,6 +117,7 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
       )}
 
       <ArticlesTable
+        domainId={domainId}
         articles={pageItems}
         totalCount={data.articles.totalCount}
         page={page}

@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { StatusBadge } from '@/components/ui/status-badge'
 
 interface Props {
+  domainId: string
   articles: ArticleListFieldsFragment[]
   totalCount: number
   page: number
@@ -20,14 +21,17 @@ const DATE_FORMAT = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2
 // pilotés par l'URL) : les colonnes sont définies ici, jamais dans la page
 // serveur, pour la même raison que `topics-table.tsx` — un Server Component
 // ne peut pas transmettre de fonctions de rendu à un Client Component.
-export function ArticlesTable({ articles, totalCount, page, pageSize, emptyState }: Props) {
+export function ArticlesTable({ domainId, articles, totalCount, page, pageSize, emptyState }: Props) {
   const columns: DataTableColumn<ArticleListFieldsFragment>[] = [
     {
       key: 'title',
       header: 'Titre',
       sortable: true,
       render: (article) => (
-        <Link href={`/dashboard/articles/${article.id}`} className="font-medium text-slate-900 hover:underline">
+        <Link
+          href={`/dashboard/articles/${article.id}?domainId=${domainId}`}
+          className="font-medium text-slate-900 hover:underline"
+        >
           {article.title}
         </Link>
       ),
