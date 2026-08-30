@@ -220,10 +220,20 @@ export class ArticlesResolver {
     return loaders.domainById.load(article.domainId)
   }
 
+  // Défense en profondeur (Correction 1 de la revue finale du Lot 1) :
+  // `create()`/`update()`/`setCategory()` empêchent désormais qu'une
+  // `categoryId` d'un autre domaine s'écrive sur un article, mais ce champ
+  // reste la seconde barrière — pour une ligne déjà incohérente en base
+  // (donnée historique, écriture directe hors service, ...). Filtrer ICI
+  // plutôt que de scoper `categoryById` par domaine : ce loader est aussi
+  // utilisé par `CategoryResolver.parent` pour une traversée intra-domaine
+  // légitime (le parent d'une catégorie est déjà garanti du même domaine par
+  // `CategoriesService`), qui n'a pas besoin d'un contexte `domainId`.
   @ResolveField(() => Category, { nullable: true })
-  category(@Parent() article: Article, @CurrentLoaders() loaders: Loaders): Promise<Category | null> {
-    if (!article.categoryId) return Promise.resolve(null)
-    return loaders.categoryById.load(article.categoryId)
+  async category(@Parent() article: Article, @CurrentLoaders() loaders: Loaders): Promise<Category | null> {
+    if (!article.categoryId) return null
+    const category = await loaders.categoryById.load(article.categoryId)
+    return category && category.domainId === article.domainId ? category : null
   }
 
   @ResolveField(() => [Tag])

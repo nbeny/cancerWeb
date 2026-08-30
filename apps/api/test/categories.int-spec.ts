@@ -9,6 +9,10 @@ const REGISTER = `mutation ($input: RegisterInput!) { register(input: $input) { 
 const CREATE_DOMAIN = `mutation ($input: CreateDomainInput!) { createDomain(input: $input) { id } }`
 const CREATE_ARTICLE = `
   mutation ($domainId: ID!, $input: CreateArticleInput!) { createArticle(domainId: $domainId, input: $input) { id categoryId } }`
+const UPDATE_ARTICLE = `
+  mutation ($domainId: ID!, $id: ID!, $input: UpdateArticleInput!) { updateArticle(domainId: $domainId, id: $id, input: $input) { id categoryId } }`
+const GET_ARTICLE_WITH_CATEGORY = `
+  query ($domainId: ID!, $id: ID!) { article(domainId: $domainId, id: $id) { id categoryId category { id name } } }`
 
 const CREATE_CATEGORY = `
   mutation ($domainId: ID!, $input: CreateCategoryInput!) {
@@ -464,6 +468,96 @@ describe('affectation catégorie/tags sur un article', () => {
 
       const intact = await h.prisma.article.findUnique({ where: { id: articleId } })
       expect(intact?.categoryId).toBeNull()
+    })
+  })
+
+  describe('Correction 1 (bloquant) — fuite inter-domaines par categoryId, les trois portes', () => {
+    async function setupCrossDomain() {
+      const alice = await signUp('alice@example.com')
+      const bob = await signUp('bob@example.com')
+      const domainAlice = await createDomain(alice.cookies, 'Domaine Alice')
+      const domainBob = await createDomain(bob.cookies, 'Domaine Bob')
+      const categoryBob = await createCategory(bob.cookies, domainBob, { name: 'Arborescence confidentielle de Bob' })
+      return { alice, bob, domainAlice, domainBob, categoryBob }
+    }
+
+    it('porte 1/3 — createArticle refuse une categoryId existante mais d’un autre domaine', async () => {
+      const { alice, domainAlice, categoryBob } = await setupCrossDomain()
+
+      const res = await h.gql(
+        CREATE_ARTICLE,
+        {
+          domainId: domainAlice,
+          input: { title: 'Article Alice', content: 'Contenu suffisant.', categoryId: categoryBob.id },
+        },
+        alice.cookies,
+      )
+
+      expect(res.body.data?.createArticle).toBeFalsy()
+      expect(errorCode(res.body)).toBeDefined()
+      // Aucun article n'a dû être créé : la validation doit précéder l'écriture, pas la corriger après coup.
+      expect(await h.prisma.article.count()).toBe(0)
+    })
+
+    it('porte 2/3 — updateArticle refuse une categoryId existante mais d’un autre domaine', async () => {
+      const { alice, domainAlice, categoryBob } = await setupCrossDomain()
+      const created = await h.gql(
+        CREATE_ARTICLE,
+        { domainId: domainAlice, input: { title: 'Article Alice', content: 'Contenu suffisant.' } },
+        alice.cookies,
+      )
+      const articleId = created.body.data.createArticle.id
+
+      const res = await h.gql(
+        UPDATE_ARTICLE,
+        { domainId: domainAlice, id: articleId, input: { categoryId: categoryBob.id } },
+        alice.cookies,
+      )
+
+      expect(res.body.data?.updateArticle).toBeFalsy()
+      expect(errorCode(res.body)).toBeDefined()
+
+      const unchanged = await h.prisma.article.findUnique({ where: { id: articleId } })
+      expect(unchanged?.categoryId).toBeNull()
+    })
+
+    it('porte 3/3 — setArticleCategory refuse une categoryId existante mais d’un autre domaine', async () => {
+      const { alice, domainAlice, categoryBob } = await setupCrossDomain()
+      const created = await h.gql(
+        CREATE_ARTICLE,
+        { domainId: domainAlice, input: { title: 'Article Alice', content: 'Contenu suffisant.' } },
+        alice.cookies,
+      )
+      const articleId = created.body.data.createArticle.id
+
+      const res = await h.gql(SET_ARTICLE_CATEGORY, { domainId: domainAlice, articleId, categoryId: categoryBob.id }, alice.cookies)
+
+      expect(res.body.data?.setArticleCategory).toBeFalsy()
+      expect(errorCode(res.body)).toBeDefined()
+
+      const unchanged = await h.prisma.article.findUnique({ where: { id: articleId } })
+      expect(unchanged?.categoryId).toBeNull()
+    })
+
+    it("défense en profondeur — Article.category n'expose jamais une catégorie d'un autre domaine que celui de l'article", async () => {
+      const { alice, domainAlice, categoryBob } = await setupCrossDomain()
+      const created = await h.gql(
+        CREATE_ARTICLE,
+        { domainId: domainAlice, input: { title: 'Article Alice', content: 'Contenu suffisant.' } },
+        alice.cookies,
+      )
+      const articleId = created.body.data.createArticle.id
+
+      // Simule une incohérence déjà présente en base (contourne volontairement
+      // le service, qui refuse désormais cette écriture par les 3 portes
+      // ci-dessus) : `Article.category` doit rester une seconde barrière même
+      // si `categoryId` pointe malgré tout vers un autre domaine.
+      await h.prisma.article.update({ where: { id: articleId }, data: { categoryId: categoryBob.id } })
+
+      const res = await h.gql(GET_ARTICLE_WITH_CATEGORY, { domainId: domainAlice, id: articleId }, alice.cookies)
+
+      expect(res.body.errors).toBeUndefined()
+      expect(res.body.data.article.category).toBeNull()
     })
   })
 })

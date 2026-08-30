@@ -47,6 +47,15 @@ export class ArticlesService {
         topicId = topic.id
       }
 
+      // Même validation que `setCategory` : une `categoryId` qui existe mais
+      // appartient à un autre domaine ne doit jamais être écrite ici. Sans ce
+      // contrôle, la contrainte de clé étrangère est satisfaite (la catégorie
+      // existe bel et bien) et l'écriture réussirait silencieusement — voir
+      // `ensureCategoryInDomain`.
+      if (input.categoryId) {
+        await this.ensureCategoryInDomain(domainId, input.categoryId, tx)
+      }
+
       const slug = await this.uniqueSlug(slugify(input.title), domainId, tx)
 
       const article = await tx.article.create({
@@ -115,7 +124,25 @@ export class ArticlesService {
       throw new ForbiddenException('Vous ne pouvez modifier que vos propres articles')
     }
 
-    const data: Prisma.ArticleUpdateInput = { ...input }
+    // `categoryId` est retiré du spread AVANT de construire `data` : le
+    // laisser traverser tel quel écrirait une catégorie d'un autre domaine
+    // sans validation (la contrainte de clé étrangère est satisfaite dès
+    // qu'elle EXISTE, quel que soit son domaine). Même validation que
+    // `create()`/`setCategory()` : `undefined` (champ omis) ne touche pas la
+    // colonne, `null` l'efface, une chaîne est revérifiée contre CE domaine.
+    // `ArticleUncheckedUpdateInput`, pas `ArticleUpdateInput` : c'est la
+    // variante qui expose `categoryId` comme scalaire direct (l'autre n'a
+    // qu'un objet relationnel `category`) — le type reflète maintenant
+    // fidèlement que ce champ est écrit et validé explicitement ci-dessous,
+    // plutôt que de compter sur le contournement du spread pour passer la
+    // vérification du compilateur (c'est ce contournement qui masquait
+    // l'absence de validation avant cette correction).
+    const { categoryId, ...rest } = input
+    const data: Prisma.ArticleUncheckedUpdateInput = { ...rest }
+    if (categoryId !== undefined) {
+      if (categoryId) await this.ensureCategoryInDomain(domainId, categoryId)
+      data.categoryId = categoryId
+    }
     // Valeurs dérivées : recalculées à chaque écriture du contenu, jamais
     // conservées telles quelles. Un contenu inchangé (`content` omis) laisse
     // `renderedHtml`/`wordCount` intacts plutôt que de les effacer.
@@ -302,10 +329,7 @@ export class ArticlesService {
       throw new ForbiddenException('Vous ne pouvez modifier que vos propres articles')
     }
 
-    if (categoryId) {
-      const category = await this.prisma.category.findFirst({ where: { id: categoryId, domainId } })
-      if (!category) throw new NotFoundException('Catégorie introuvable')
-    }
+    if (categoryId) await this.ensureCategoryInDomain(domainId, categoryId)
 
     return this.prisma.article.update({ where: { id: articleId }, data: { categoryId } })
   }
@@ -364,6 +388,30 @@ export class ArticlesService {
    * depuis un autre chemin ne doit pas pouvoir contourner l'isolation par
    * domaine simplement en sautant le resolver.
    */
+  /**
+   * Seule et unique porte de validation d'une `categoryId` pour un article :
+   * partagée par `create()`, `update()` et `setCategory()` (Correction 1 de
+   * la revue finale du Lot 1). La contrainte de clé étrangère de Postgres ne
+   * vérifie que l'EXISTENCE de la catégorie, jamais son domaine — sans ce
+   * contrôle applicatif, une `categoryId` existante mais appartenant à un
+   * autre domaine s'écrirait sans erreur, exposant ensuite toute
+   * l'arborescence de ce domaine via `Article.category` (voir aussi la
+   * défense en profondeur posée sur ce `@ResolveField`, dans
+   * `articles.resolver.ts`).
+   *
+   * Accepte optionnellement le client de transaction interactive en cours
+   * (`create()` valide DANS la même transaction que l'écriture qu'elle
+   * protège), sinon retombe sur `this.prisma`.
+   */
+  private async ensureCategoryInDomain(
+    domainId: string,
+    categoryId: string,
+    client: Pick<Prisma.TransactionClient, 'category'> = this.prisma,
+  ): Promise<void> {
+    const category = await client.category.findFirst({ where: { id: categoryId, domainId } })
+    if (!category) throw new NotFoundException('Catégorie introuvable')
+  }
+
   private async requireMember(userId: string, domainId: string): Promise<DomainMember> {
     const member = await this.prisma.domainMember.findUnique({
       where: { userId_domainId: { userId, domainId } },
