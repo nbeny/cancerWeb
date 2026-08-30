@@ -26,19 +26,22 @@ FROM base AS runtime
 ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/web ./apps/web
-# packages/graphql et packages/validation restent en TypeScript brut
-# (package.json "main": "./src/...ts") : node_modules/@cancerweb/* n'est
-# qu'un lien symbolique pnpm vers ces répertoires. `transpilePackages` fait
-# transpiler et inliner leur code dans les bundles .next par webpack au
-# build, mais le lien du workspace doit rester résoluble au démarrage (ex.
-# résolution de module par Node en dehors des chemins bundlés). On ne copie
-# que le strict nécessaire (package.json + src), pas node_modules ni
-# packages/config (outillage de dev uniquement), pour ne pas alourdir
-# l'image pour rien.
+# packages/graphql reste en TypeScript brut (package.json "main":
+# "./src/generated.ts") : node_modules/@cancerweb/graphql n'est qu'un lien
+# symbolique pnpm vers ce répertoire. `transpilePackages` fait transpiler et
+# inliner son code dans les bundles .next par webpack au build, mais le lien
+# du workspace doit rester résoluble au démarrage (ex. résolution de module
+# par Node en dehors des chemins bundlés). On ne copie que le strict
+# nécessaire (package.json + src), pas node_modules ni packages/config
+# (outillage de dev uniquement), pour ne pas alourdir l'image pour rien.
 COPY --from=build /app/packages/graphql/package.json ./packages/graphql/package.json
 COPY --from=build /app/packages/graphql/src ./packages/graphql/src
+# packages/validation publie désormais un vrai build ("main"/"types" pointent
+# vers dist/, voir packages/validation/package.json) : c'est dist/ qu'il faut
+# copier ici, pas src/, sous peine de lien symbolique résoluble mais menant à
+# un package.json dont le "main" ne trouve rien au démarrage.
 COPY --from=build /app/packages/validation/package.json ./packages/validation/package.json
-COPY --from=build /app/packages/validation/src ./packages/validation/src
+COPY --from=build /app/packages/validation/dist ./packages/validation/dist
 # Le CMD lance `pnpm --filter @cancerweb/web start` : pnpm doit retrouver la
 # racine du workspace (pnpm-workspace.yaml) pour résoudre le filtre, et
 # corepack doit trouver le package.json racine pour épingler la bonne

@@ -1,3 +1,6 @@
 export * from './auth'
 export * from './country'
 export * from './domain'
+export * from './topic'
+export * from './article'
+export * from './taxonomy'

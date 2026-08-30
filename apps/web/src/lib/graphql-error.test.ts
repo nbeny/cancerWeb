@@ -1,4 +1,4 @@
-import { graphqlErrorCode } from './graphql-error'
+import { graphqlErrorCode, graphqlErrorMessage } from './graphql-error'
 
 describe('graphqlErrorCode', () => {
   it('lit le code sous extensions.code (norme GraphQL, formatError API)', () => {
@@ -19,5 +19,17 @@ describe('graphqlErrorCode', () => {
   it('renvoie undefined pour une erreur sans structure GraphQL', () => {
     expect(graphqlErrorCode(new Error('boom'))).toBeUndefined()
     expect(graphqlErrorCode(undefined)).toBeUndefined()
+  })
+})
+
+describe('graphqlErrorMessage', () => {
+  it('lit le message du premier GraphQLError', () => {
+    const error = { response: { errors: [{ message: 'Rôle EDITOR requis sur ce domaine' }] } }
+    expect(graphqlErrorMessage(error)).toBe('Rôle EDITOR requis sur ce domaine')
+  })
+
+  it('renvoie undefined pour une erreur sans structure GraphQL', () => {
+    expect(graphqlErrorMessage(new Error('boom'))).toBeUndefined()
+    expect(graphqlErrorMessage(undefined)).toBeUndefined()
   })
 })

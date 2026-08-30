@@ -48,6 +48,15 @@ jobs:
         with: { node-version: 24, cache: pnpm }
 
       - run: pnpm install --frozen-lockfile
+
+      # Étape explicite plutôt que de compter sur le fait qu'`api build` (plus
+      # bas) le fait déjà en side-effect (`pnpm --filter @cancerweb/validation
+      # build && nest build`) : `@cancerweb/validation` a un vrai build depuis
+      # le début du Lot 1 (`tsc`, voir son `package.json`), consommé par l'API
+      # ET le front — le rendre explicite ici évite qu'un futur réordonnancement
+      # de ce job ne le fasse dépendre silencieusement d'un autre step.
+      - run: pnpm --filter @cancerweb/validation build
+
       - run: pnpm --filter @cancerweb/api prisma:generate
       - run: pnpm --filter @cancerweb/api prisma:deploy
 
@@ -97,6 +106,16 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @cancerweb/web exec playwright install --with-deps chromium
+
+      # `editorial-workflow.spec.ts` (Task 19) charge à l'exécution le client
+      # Prisma généré d'`apps/api` (voir sa jsdoc `loadPrismaClient` : aucune
+      # mutation GraphQL n'ajoute un membre de domaine avec un rôle choisi, le
+      # test insère donc directement en base). Ce runner n'a encore jamais
+      # exécuté `prisma generate` (job séparé de `verify`, sur une machine
+      # neuve) : sans cette étape, `apps/api/node_modules/@prisma/client`
+      # n'existe pas et le test échoue au chargement du module, pas à une
+      # assertion.
+      - run: pnpm --filter @cancerweb/api prisma:generate
 
       - name: Préparer l'environnement
         run: cp .env.example .env

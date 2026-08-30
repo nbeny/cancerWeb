@@ -43,10 +43,11 @@ export const createDomainSchema = z.object({
   aiInstructions: z.string().max(4000, 'Les instructions IA doivent faire au plus 4000 caractères').optional(),
 })
 
-// `UpdateDomainInput` n'expose pas `country` (voir domain.types.ts) et tous
-// les autres champs sont facultatifs (mise à jour partielle) ; les mêmes
-// bornes s'appliquent quand un champ est fourni.
-export const updateDomainSchema = createDomainSchema.omit({ country: true }).partial().extend({
+// Tous les champs sont facultatifs (mise à jour partielle), y compris
+// `country` (voir domain.types.ts : ajouté à UpdateDomainInput, une
+// asymétrie non intentionnelle du Lot 0) ; les mêmes bornes s'appliquent
+// quand un champ est fourni.
+export const updateDomainSchema = createDomainSchema.partial().extend({
   autoPublish: z.boolean().optional(),
   reviewOutline: z.boolean().optional(),
 })

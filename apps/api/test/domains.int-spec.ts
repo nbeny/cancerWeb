@@ -107,4 +107,78 @@ describe('domaines', () => {
       expect(res.body.data.updateDomain.description).toBeNull()
     })
   })
+
+  // Dette du Lot 0 : `country` figurait dans CreateDomainInput mais pas dans
+  // UpdateDomainInput — asymétrie non intentionnelle. Même validation ISO
+  // 3166-1 alpha-2 qu'à la création (voir UPDATE_WITH_COUNTRY, qui redemande
+  // `country` en sortie).
+  describe('myRole', () => {
+    const DOMAIN_WITH_ROLE = `
+      query ($id: ID!) { domain(id: $id) { id myRole } }`
+
+    it("reflète le rôle de l'utilisateur COURANT, jamais celui d'un autre : deux membres du même domaine, deux rôles différents, obtiennent chacun le leur", async () => {
+      const alice = await signUp('alice@example.com')
+      const bob = await signUp('bob@example.com')
+      const id = await (async () => {
+        const res = await h.gql(CREATE, { input: { name: 'Cybersécurité' } }, alice.cookies)
+        return res.body.data.createDomain.id as string
+      })()
+      await h.prisma.domainMember.create({ data: { domainId: id, userId: bob.userId, role: 'EDITOR' } })
+
+      const asAlice = await h.gql(DOMAIN_WITH_ROLE, { id }, alice.cookies)
+      const asBob = await h.gql(DOMAIN_WITH_ROLE, { id }, bob.cookies)
+
+      expect(asAlice.body.errors).toBeUndefined()
+      expect(asBob.body.errors).toBeUndefined()
+      // Alice a créé le domaine : OWNER (voir « rend son créateur OWNER » plus haut).
+      expect(asAlice.body.data.domain.myRole).toBe('OWNER')
+      expect(asBob.body.data.domain.myRole).toBe('EDITOR')
+    })
+
+    it("un non-membre ne peut pas lire ce champ : il n'accède déjà pas au domaine (NOT_FOUND, avant même d'atteindre myRole)", async () => {
+      const alice = await signUp('alice@example.com')
+      const stranger = await signUp('stranger@example.com')
+      const res = await h.gql(CREATE, { input: { name: 'Cybersécurité' } }, alice.cookies)
+      const id = res.body.data.createDomain.id
+
+      const asStranger = await h.gql(DOMAIN_WITH_ROLE, { id }, stranger.cookies)
+      expect(asStranger.body.data?.domain ?? null).toBeNull()
+      expect(errorCode(asStranger.body)).toBe('NOT_FOUND')
+    })
+  })
+
+  describe('country sur updateDomain', () => {
+    const UPDATE_WITH_COUNTRY = `
+      mutation ($id: ID!, $input: UpdateDomainInput!) {
+        updateDomain(id: $id, input: $input) { id country }
+      }`
+
+    it('modifie puis efface le pays', async () => {
+      const { cookies } = await signUp('alice@example.com')
+      const created = await h.gql(CREATE, { input: { name: 'Cybersécurité', country: 'fr' } }, cookies)
+      const id = created.body.data.createDomain.id
+      expect(created.body.data.createDomain.country).toBe('FR')
+
+      const updated = await h.gql(UPDATE_WITH_COUNTRY, { id, input: { country: 'be' } }, cookies)
+      expect(updated.body.errors).toBeUndefined()
+      expect(updated.body.data.updateDomain.country).toBe('BE')
+
+      const erased = await h.gql(UPDATE_WITH_COUNTRY, { id, input: { country: null } }, cookies)
+      expect(erased.body.errors).toBeUndefined()
+      expect(erased.body.data.updateDomain.country).toBeNull()
+    })
+
+    it('refuse un code qui ressemble à un code pays mais n’en est pas un', async () => {
+      const { cookies } = await signUp('alice@example.com')
+      const created = await h.gql(CREATE, { input: { name: 'Cybersécurité' } }, cookies)
+      const id = created.body.data.createDomain.id
+
+      const res = await h.gql(UPDATE_WITH_COUNTRY, { id, input: { country: 'ZZ' } }, cookies)
+      expect(res.body.data?.updateDomain).toBeFalsy()
+      expect(errorCode(res.body)).toBeDefined()
+
+      const unchanged = await h.prisma.domain.findUnique({ where: { id } })
+      expect(unchanged?.country).toBeNull()
+    })
+  })
 })

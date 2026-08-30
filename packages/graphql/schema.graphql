@@ -2,8 +2,124 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type Article {
+  author: User!
+  authorId: ID!
+  canonicalUrl: String
+  category: Category
+  categoryId: ID
+  content: String!
+  coverImageUrl: String
+  createdAt: DateTime!
+  currentVersion: Int!
+  domain: Domain!
+  domainId: ID!
+  excerpt: String
+  focusKeyword: String
+  id: ID!
+  latestSeoScore: Int
+  metaDescription: String
+  publishedAt: DateTime
+  renderedHtml: String
+  robotsFollow: Boolean!
+  robotsIndex: Boolean!
+  scheduledAt: DateTime
+  secondaryKeywords: [String!]!
+  seoTitle: String
+  slug: String!
+  status: ArticleStatus!
+  tags: [Tag!]!
+  title: String!
+  topicId: ID
+  updatedAt: DateTime!
+  wordCount: Int!
+}
+
+type ArticleConnection {
+  items: [Article!]!
+  totalCount: Int!
+}
+
+input ArticleFilter {
+  authorId: ID
+  categoryId: ID
+  minSeoScore: Int
+  publishedAfter: DateTime
+  publishedBefore: DateTime
+  search: String
+  status: [ArticleStatus!]
+  tagIds: [ID!]
+}
+
+input ArticleSort {
+  direction: SortDirection!
+  field: ArticleSortField!
+}
+
+enum ArticleSortField {
+  CREATED_AT
+  PUBLISHED_AT
+  SEO_SCORE
+  TITLE
+  UPDATED_AT
+}
+
+enum ArticleStatus {
+  APPROVED
+  ARCHIVED
+  DRAFT
+  PUBLISHED
+  REVIEW
+  SCHEDULED
+}
+
+type ArticleVersion {
+  articleId: ID!
+  changeNote: String
+  content: String!
+  createdAt: DateTime!
+  createdById: ID!
+  id: ID!
+  title: String!
+  version: Int!
+}
+
 type AuthPayload {
   user: User!
+}
+
+type Category {
+  articleCount: Int!
+  children: [Category!]!
+  description: String
+  domainId: ID!
+  id: ID!
+  name: String!
+  parent: Category
+  parentId: ID
+  slug: String!
+}
+
+input CreateArticleInput {
+  canonicalUrl: String
+  categoryId: ID
+  content: String!
+  coverImageUrl: String
+  excerpt: String
+  focusKeyword: String
+  metaDescription: String
+  robotsFollow: Boolean! = true
+  robotsIndex: Boolean! = true
+  secondaryKeywords: [String!]! = []
+  seoTitle: String
+  title: String!
+  topicId: ID
+}
+
+input CreateCategoryInput {
+  description: String
+  name: String!
+  parentId: ID
 }
 
 input CreateDomainInput {
@@ -17,6 +133,20 @@ input CreateDomainInput {
   name: String!
   targetAudience: [String!]! = []
   tone: Tone! = PROFESSIONAL
+}
+
+input CreateTagInput {
+  name: String!
+}
+
+input CreateTopicInput {
+  description: String
+  estimatedDifficulty: Int
+  estimatedInterest: Int
+  keywords: [String!]! = []
+  searchIntent: SearchIntent
+  suggestedAngle: String
+  title: String!
 }
 
 """
@@ -35,6 +165,7 @@ type Domain {
   id: ID!
   keywords: [String!]!
   language: String!
+  myRole: DomainRole!
   name: String!
   reviewOutline: Boolean!
   slug: String!
@@ -48,6 +179,13 @@ type DomainConnection {
   totalCount: Int!
 }
 
+enum DomainRole {
+  AUTHOR
+  EDITOR
+  OWNER
+  VIEWER
+}
+
 enum ExpertiseLevel {
   BEGINNER
   EXPERT
@@ -59,19 +197,46 @@ enum GlobalRole {
   USER
 }
 
+"""Valeur JSON arbitraire, sans schéma fixe."""
+scalar JSON
+
 input LoginInput {
   email: String!
   password: String!
 }
 
 type Mutation {
+  analyzeSeo(articleId: ID!, domainId: ID!): SeoReport!
+  approveArticle(domainId: ID!, id: ID!): Article!
+  archiveArticle(domainId: ID!, id: ID!): Article!
+  createArticle(domainId: ID!, input: CreateArticleInput!): Article!
+  createArticleVersion(articleId: ID!, changeNote: String, domainId: ID!): ArticleVersion!
+  createCategory(domainId: ID!, input: CreateCategoryInput!): Category!
   createDomain(input: CreateDomainInput!): Domain!
+  createTag(domainId: ID!, input: CreateTagInput!): Tag!
+  createTopic(domainId: ID!, input: CreateTopicInput!): Topic!
+  deleteArticle(domainId: ID!, id: ID!): Boolean!
+  deleteCategory(domainId: ID!, id: ID!): Boolean!
   deleteDomain(id: ID!): Boolean!
+  deleteTag(domainId: ID!, id: ID!): Boolean!
+  deleteTopic(domainId: ID!, id: ID!): Boolean!
   login(input: LoginInput!): AuthPayload!
   logout: Boolean!
+  publishArticle(domainId: ID!, id: ID!): Article!
   refresh: AuthPayload!
   register(input: RegisterInput!): AuthPayload!
+  rejectArticle(domainId: ID!, id: ID!): Article!
+  rejectTopic(domainId: ID!, id: ID!): Topic!
+  restoreArticleVersion(articleId: ID!, domainId: ID!, version: Int!): Article!
+  scheduleArticle(domainId: ID!, id: ID!, scheduledAt: DateTime!): Article!
+  selectTopic(domainId: ID!, id: ID!): Topic!
+  setArticleCategory(articleId: ID!, categoryId: ID, domainId: ID!): Article!
+  setArticleTags(articleId: ID!, domainId: ID!, tagIds: [ID!]!): Article!
+  submitForReview(domainId: ID!, id: ID!): Article!
+  updateArticle(domainId: ID!, id: ID!, input: UpdateArticleInput!): Article!
+  updateCategory(domainId: ID!, id: ID!, input: UpdateCategoryInput!): Category!
   updateDomain(id: ID!, input: UpdateDomainInput!): Domain!
+  updateTopic(domainId: ID!, id: ID!, input: UpdateTopicInput!): Topic!
 }
 
 input PageInput {
@@ -80,18 +245,68 @@ input PageInput {
 }
 
 type Query {
+  article(domainId: ID!, id: ID!): Article!
+  articleVersions(articleId: ID!, domainId: ID!): [ArticleVersion!]!
+  articles(domainId: ID!, filter: ArticleFilter, page: PageInput, sort: ArticleSort): ArticleConnection!
+  categories(domainId: ID!): [Category!]!
+  category(domainId: ID!, id: ID!): Category!
   domain(id: ID!): Domain!
   domains(page: PageInput): DomainConnection!
   me: User!
+  seoReports(articleId: ID!, domainId: ID!, page: PageInput): SeoReportConnection!
 
   """Horodatage serveur — sonde de disponibilité."""
   serverTime: String!
+  tags(domainId: ID!): [Tag!]!
+  topic(domainId: ID!, id: ID!): Topic!
+  topics(domainId: ID!, page: PageInput, status: TopicStatus): TopicConnection!
 }
 
 input RegisterInput {
   email: String!
   name: String!
   password: String!
+}
+
+enum SearchIntent {
+  COMMERCIAL
+  INFORMATIONAL
+  NAVIGATIONAL
+  TRANSACTIONAL
+}
+
+type SeoIssue {
+  code: String!
+  field: String
+  message: String!
+  severity: String!
+}
+
+type SeoReport {
+  articleId: ID!
+  cappedBy: [String!]!
+  computedAt: DateTime!
+  id: ID!
+  issues: [SeoIssue!]!
+  metrics: JSON!
+  score: Int!
+}
+
+type SeoReportConnection {
+  items: [SeoReport!]!
+  totalCount: Int!
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+type Tag {
+  domainId: ID!
+  id: ID!
+  name: String!
+  slug: String!
 }
 
 enum Tone {
@@ -104,9 +319,59 @@ enum Tone {
   TECHNICAL
 }
 
+type Topic {
+  createdAt: DateTime!
+  description: String
+  domainId: ID!
+  estimatedDifficulty: Int
+  estimatedInterest: Int
+  generatedByJobId: String
+  id: ID!
+  keywords: [String!]!
+  searchIntent: SearchIntent
+  status: TopicStatus!
+  suggestedAngle: String
+  title: String!
+  updatedAt: DateTime!
+}
+
+type TopicConnection {
+  items: [Topic!]!
+  totalCount: Int!
+}
+
+enum TopicStatus {
+  CONVERTED
+  IDEA
+  REJECTED
+  SELECTED
+}
+
+input UpdateArticleInput {
+  canonicalUrl: String
+  categoryId: ID
+  content: String
+  coverImageUrl: String
+  excerpt: String
+  focusKeyword: String
+  metaDescription: String
+  robotsFollow: Boolean
+  robotsIndex: Boolean
+  secondaryKeywords: [String!]
+  seoTitle: String
+  title: String
+}
+
+input UpdateCategoryInput {
+  description: String
+  name: String
+  parentId: ID
+}
+
 input UpdateDomainInput {
   aiInstructions: String
   autoPublish: Boolean
+  country: String
   description: String
   excludedTopics: [String!]
   expertiseLevel: ExpertiseLevel
@@ -116,6 +381,16 @@ input UpdateDomainInput {
   reviewOutline: Boolean
   targetAudience: [String!]
   tone: Tone
+}
+
+input UpdateTopicInput {
+  description: String
+  estimatedDifficulty: Int
+  estimatedInterest: Int
+  keywords: [String!]
+  searchIntent: SearchIntent
+  suggestedAngle: String
+  title: String
 }
 
 type User {

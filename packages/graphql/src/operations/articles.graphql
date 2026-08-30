@@ -1,0 +1,186 @@
+fragment ArticleListFields on Article {
+  id
+  title
+  slug
+  status
+  latestSeoScore
+  createdAt
+  updatedAt
+  publishedAt
+  author { id name }
+  category { id name }
+}
+
+# Filtrage ET tri ont lieu côté serveur (voir `apps/api/src/articles/article-query.ts`) :
+# `filter` porte désormais status/authorId/categoryId/tagIds/search/minSeoScore/
+# publishedAfter/publishedBefore, et `sort` porte le tri. `totalCount` reflète
+# le filtre appliqué — la pagination `/dashboard/articles` s'appuie dessus,
+# plus sur une taille de lot récupérée côté client (voir Git history pour
+# l'ancienne stratégie à 500 articles, abandonnée : silencieusement fausse
+# au-delà de cette limite).
+query Articles($domainId: ID!, $filter: ArticleFilter, $sort: ArticleSort, $page: PageInput) {
+  articles(domainId: $domainId, filter: $filter, sort: $sort, page: $page) {
+    items { ...ArticleListFields }
+    totalCount
+  }
+}
+
+mutation CreateArticle($domainId: ID!, $input: CreateArticleInput!) {
+  createArticle(domainId: $domainId, input: $input) {
+    id
+    title
+    slug
+    status
+  }
+}
+
+query ArticleCategories($domainId: ID!) {
+  categories(domainId: $domainId) {
+    id
+    name
+    slug
+  }
+}
+
+query ArticleTags($domainId: ID!) {
+  tags(domainId: $domainId) {
+    id
+    name
+    slug
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Éditeur d'article (Tasks 16-17). `ArticleEditorFields` porte tous les champs
+# affichés/édités par l'écran d'édition — contenu, HTML déjà sanitizé côté
+# serveur (`renderedHtml`, jamais réinterprété côté client), et l'intégralité
+# des métadonnées SEO. `ArticleStatusFields` et `ArticleTaxonomyFields` sont
+# des fragments plus étroits pour les mutations qui ne touchent PAS le
+# contenu (transitions, catégorie/tags) : réutiliser `ArticleEditorFields` sur
+# ces mutations réémettrait `content`/`renderedHtml` à chaque transition, pour
+# une valeur qui n'a pas changé.
+# ---------------------------------------------------------------------------
+
+fragment ArticleEditorFields on Article {
+  id
+  domainId
+  title
+  slug
+  status
+  content
+  renderedHtml
+  excerpt
+  coverImageUrl
+  seoTitle
+  metaDescription
+  focusKeyword
+  secondaryKeywords
+  canonicalUrl
+  robotsIndex
+  robotsFollow
+  latestSeoScore
+  currentVersion
+  wordCount
+  topicId
+  publishedAt
+  scheduledAt
+  createdAt
+  updatedAt
+  author { id name }
+  category { id name }
+  tags { id name }
+  # `myRole` (correctif 2) : le rôle de l'utilisateur COURANT sur le domaine
+  # de l'article, connu AVANT tout clic sur la barre de transitions (voir
+  # `apps/web/src/components/editor/transition-bar.tsx`) — plus besoin de
+  # tenter une mutation pour découvrir qu'elle est refusée.
+  domain { id myRole }
+}
+
+fragment ArticleStatusFields on Article {
+  id
+  status
+  currentVersion
+  publishedAt
+  scheduledAt
+  updatedAt
+}
+
+fragment ArticleTaxonomyFields on Article {
+  id
+  category { id name }
+  tags { id name }
+}
+
+query Article($domainId: ID!, $id: ID!) {
+  article(domainId: $domainId, id: $id) { ...ArticleEditorFields }
+}
+
+mutation UpdateArticle($domainId: ID!, $id: ID!, $input: UpdateArticleInput!) {
+  updateArticle(domainId: $domainId, id: $id, input: $input) { ...ArticleEditorFields }
+}
+
+mutation SetArticleCategory($domainId: ID!, $articleId: ID!, $categoryId: ID) {
+  setArticleCategory(domainId: $domainId, articleId: $articleId, categoryId: $categoryId) {
+    ...ArticleTaxonomyFields
+  }
+}
+
+mutation SetArticleTags($domainId: ID!, $articleId: ID!, $tagIds: [ID!]!) {
+  setArticleTags(domainId: $domainId, articleId: $articleId, tagIds: $tagIds) {
+    ...ArticleTaxonomyFields
+  }
+}
+
+mutation SubmitForReview($domainId: ID!, $id: ID!) {
+  submitForReview(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+mutation ApproveArticle($domainId: ID!, $id: ID!) {
+  approveArticle(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+mutation RejectArticle($domainId: ID!, $id: ID!) {
+  rejectArticle(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+mutation PublishArticle($domainId: ID!, $id: ID!) {
+  publishArticle(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+mutation ScheduleArticle($domainId: ID!, $id: ID!, $scheduledAt: DateTime!) {
+  scheduleArticle(domainId: $domainId, id: $id, scheduledAt: $scheduledAt) { ...ArticleStatusFields }
+}
+
+mutation ArchiveArticle($domainId: ID!, $id: ID!) {
+  archiveArticle(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+query ArticleVersions($domainId: ID!, $articleId: ID!) {
+  articleVersions(domainId: $domainId, articleId: $articleId) {
+    id
+    version
+    title
+    content
+    changeNote
+    createdAt
+    createdById
+  }
+}
+
+mutation CreateArticleVersion($domainId: ID!, $articleId: ID!, $changeNote: String) {
+  createArticleVersion(domainId: $domainId, articleId: $articleId, changeNote: $changeNote) {
+    id
+    version
+    title
+    content
+    changeNote
+    createdAt
+    createdById
+  }
+}
+
+mutation RestoreArticleVersion($domainId: ID!, $articleId: ID!, $version: Int!) {
+  restoreArticleVersion(domainId: $domainId, articleId: $articleId, version: $version) {
+    ...ArticleEditorFields
+  }
+}

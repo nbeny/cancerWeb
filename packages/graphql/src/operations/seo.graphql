@@ -1,0 +1,33 @@
+# `cappedBy` est un champ CALCULÉ côté serveur (`@ResolveField`, voir
+# `apps/api/src/seo/seo.resolver.ts`), dérivé des `issues` persistées via
+# `blockingCodes` — LA MÊME fonction que celle utilisée par l'analyseur pur
+# au moment du calcul (`apps/api/src/seo/analyzer.ts`). Le panneau SEO (Task
+# 17) le consomme directement plutôt que de reproduire le filtre
+# `issues.filter(severity === 'BLOCKING')` côté client : une seule définition
+# de la règle de plafonnement, côté serveur, qui ne peut plus diverger du
+# client.
+fragment SeoReportFields on SeoReport {
+  id
+  articleId
+  score
+  cappedBy
+  computedAt
+  issues {
+    code
+    severity
+    message
+    field
+  }
+  metrics
+}
+
+mutation AnalyzeSeo($domainId: ID!, $articleId: ID!) {
+  analyzeSeo(domainId: $domainId, articleId: $articleId) { ...SeoReportFields }
+}
+
+query SeoReports($domainId: ID!, $articleId: ID!, $page: PageInput) {
+  seoReports(domainId: $domainId, articleId: $articleId, page: $page) {
+    items { ...SeoReportFields }
+    totalCount
+  }
+}

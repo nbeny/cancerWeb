@@ -146,25 +146,119 @@ docker compose stop worker
 AI_PROVIDER=cli pnpm worker
 ```
 
+## Flux éditorial (Lot 1)
+
+### Cycle de vie d'un article
+
+```
+Topic (IDEA → SELECTED) ──« Rédiger l'article »──▶ Article en DRAFT (lié au topic)
+
+  DRAFT ──submit──▶ REVIEW ──approve──▶ APPROVED ──publish──▶ PUBLISHED
+    ▲                  │                    │                     │
+    └──── reject ──────┘                    └──schedule──▶ SCHEDULED
+                                                                   │
+  ARCHIVED ◀─────────────────────── archive ───────────────────────┘
+```
+
+Chaque flèche est une entrée de la machine à états pure `apps/api/src/articles/transitions.ts` (`TRANSITIONS`). Une transition absente de ce tableau est refusée pour **tous** les rôles, y compris `OWNER` : un rôle plus élevé ne débloque que les transitions qui existent, il n'en invente jamais une nouvelle (ex. `DRAFT → PUBLISHED` directement n'existe pas).
+
+### Barème SEO — 8 critères, sur 100
+
+Le tableau ci-dessous donne le poids **nominal** de chaque critère — celui
+obtenu quand toutes les données facultatives sont renseignées
+(`focusKeyword` présent, langue du domaine couverte par l'analyseur de
+lisibilité). Ce n'est **pas** un total de points fixe : `analyze()`
+(`apps/api/src/seo/analyzer.ts`) ne lit jamais `CRITERION_WEIGHTS` (une
+simple constante de garde-fou, vérifiée sommer à 100 par `analyzer.spec.ts`,
+mais jamais consultée par le calcul du score) ; il additionne le `max`
+**réellement retourné** par chaque critère pour CET article, et calcule
+`score = round(earned / max * 100)` — un pourcentage relatif au barème
+effectivement applicable, pas un tally absolu sur 100.
+
+| Critère | Poids nominal | Fait plafonner le score si... |
+|---|---:|---|
+| `TITLE` (titre SEO) | 20 *(12 sans `focusKeyword`)* | — |
+| `META_DESCRIPTION` | 15 *(10 sans `focusKeyword`)* | absente |
+| `HEADINGS` (structure des titres) | 15 | pas exactement un H1 |
+| `KEYWORD` (usage du mot-clé focus) | 15 | — *(neutralisé — 0 point, absent du barème — sans `focusKeyword`)* |
+| `LENGTH` (nombre de mots) | 10 | < 300 mots |
+| `LINKS` (maillage interne/externe) | 10 | — |
+| `READABILITY` (Flesch/Kandel-Moles) | 10 | — *(neutralisé hors français/anglais)* |
+| `IMAGES` (texte alternatif) | 5 | — |
+
+`TITLE` et `META_DESCRIPTION` ne sont **pas** neutralisés sans
+`focusKeyword` (contrairement à `KEYWORD`/`READABILITY`, qui sortent
+entièrement du barème) : seul leur sous-critère « mot-clé présent dans le
+titre/la meta description » est retiré (8 points sur 20 pour `TITLE`, 5 sur
+15 pour `META_DESCRIPTION` — voir `apps/api/src/seo/criteria/title.ts` et
+`meta-description.ts`), le reste de leur barème (longueur, présence) reste
+applicable normalement.
+
+**Règle la plus surprenante pour un nouvel arrivant : le plafonnement à
+60.** La moindre faute **bloquante** (meta description absente, H1 manquant
+ou en double, contenu de moins de 300 mots) ramène le score final à 60 au
+maximum, quel que soit le nombre de fautes bloquantes ou le score brut
+calculé par ailleurs (voir `apps/api/src/seo/analyzer.ts`, fonctions
+`blockingCodes`/`analyze`, et son test `analyzer.spec.ts`). Un article ne
+peut donc jamais paraître « presque publiable » tant qu'une de ces trois
+conditions essentielles n'est pas remplie. Attention : « plafonné » ne
+signifie pas que le score affiché vaut 60 — c'est `min(brut, 60)`, donc un
+score brut déjà inférieur à 60 (ex. 42) reste affiché tel quel, plafonné ou
+non. Le champ GraphQL `SeoReport.cappedBy` liste les codes responsables du
+plafonnement ; l'éditeur (`SeoPanel`) l'affiche explicitement en reprenant
+le score réellement retourné (« Score plafonné à *{score}* — *N* faute(s)
+bloquante(s) »), jamais le littéral « 60 ».
+
+Un critère facultatif sans donnée disponible (`KEYWORD` sans `focusKeyword` renseigné, `READABILITY` pour une langue non couverte) est neutralisé : ses points sortent à la fois du numérateur et du dénominateur du score, pour ne jamais pénaliser l'absence d'une donnée facultative.
+
+### Matrice des rôles (par domaine)
+
+| Action | VIEWER | AUTHOR | EDITOR | OWNER |
+|---|:---:|:---:|:---:|:---:|
+| Lire articles, versions, rapports SEO | ✓ | ✓ | ✓ | ✓ |
+| Créer un article ; modifier/verser/restaurer **le sien** | | ✓ | ✓ | ✓ |
+| Modifier/verser/restaurer l'article d'un **autre** auteur | | | ✓ | ✓ |
+| Soumettre en revue (`DRAFT → REVIEW`) | | ✓ | ✓ | ✓ |
+| Rejeter ou **approuver** (`REVIEW → DRAFT`/`APPROVED`) | | | ✓ | ✓ |
+| **Publier**, programmer, archiver | | | ✓ | ✓ |
+| Supprimer un article | | | | ✓ |
+| Modifier / supprimer le domaine | | | modifier | ✓ |
+
+**Un `AUTHOR` ne peut ni approuver ni publier** — c'est la séparation « rédaction (assistée par IA) → revue humaine → publication » posée dès le début du projet, et la garantie que le parcours E2E `apps/web/e2e/editorial-workflow.spec.ts` (Task 19) vérifie de bout en bout. Côté interface, `TransitionBar` (`apps/web/src/components/editor/transition-bar.tsx`) connaît le rôle courant (`Article.domain.myRole`) **avant** le moindre clic : un bouton hors de portée du rôle reste visible mais désactivé, avec sa raison affichée — jamais masqué en silence. Le serveur revérifie systématiquement (`DomainRoleGuard` + vérification de propriété dans `articles.service.ts`) : la désactivation côté client est un confort d'usage, jamais le mécanisme de sécurité réel.
+
+### Versionnement
+
+Une `ArticleVersion` est créée :
+- à la création de l'article (v1) ;
+- à chaque transition de statut (submit/reject/approve/publish/schedule/archive), dans la **même transaction** que le changement de statut ;
+- explicitement, via la mutation `createArticleVersion` ;
+- à une restauration (voir ci-dessous).
+
+**Une sauvegarde de frappe (`updateArticle`, celle de l'éditeur, temporisée à 1,5 s) ne crée jamais de version** — sinon chaque pause de frappe produirait une nouvelle entrée dans l'historique.
+
+**Restaurer une version ne rembobine pas l'historique.** `restoreArticleVersion` (mutation GraphQL ; `ArticlesService.restoreVersion` côté service) copie le contenu de la version choisie sur l'article courant puis crée une **nouvelle** version (restaurer `v2` alors que `v1..v4` existent déjà crée `v5`) : `v2` reste intacte, et la restauration elle-même reste réversible en restaurant à son tour une version précédente. Le statut du workflow n'est jamais rejoué par une restauration : elle ne change que le contenu (titre + corps), jamais l'étape du cycle de vie.
+
 ## Tests
 
 ```bash
-# API — unitaires (18 tests)
+# API — unitaires (306 tests)
 pnpm --filter @cancerweb/api test
 
-# API — intégration (36 tests), contre postgres-test (tmpfs, port 5434)
+# API — intégration (179 tests), contre postgres-test (tmpfs, port 5434)
 pnpm --filter @cancerweb/api test:int
 ```
 
 `test:int` exécute d'abord `pretest:int` (`prisma migrate deploy` contre `.env.test`) : la base `postgres-test` étant en `tmpfs`, elle repart vide à chaque redémarrage du conteneur, et les migrations sont donc réappliquées automatiquement avant chaque campagne de tests.
 
 ```bash
-# Web — Vitest (15 tests)
+# Web — Vitest (131 tests)
 pnpm --filter @cancerweb/web test
 
-# Web — Playwright (end-to-end navigateur)
+# Web — Playwright (end-to-end navigateur, 3 tests : 2 auth/domaines + le parcours éditorial complet)
 pnpm --filter @cancerweb/web e2e
 ```
+
+`e2e` exige la pile Docker complète (`docker compose up -d --build`) : `apps/web/playwright.config.ts` pointe `baseURL` sur `http://127.0.0.1:3000` (le proxy), pas sur un serveur de dev lancé à la volée.
 
 ## Production
 
