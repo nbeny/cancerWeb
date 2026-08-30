@@ -149,10 +149,11 @@ describe('ArticleEditor — sauvegarde temporisée', () => {
 
     await act(async () => {
       resolveUpdate({ data: { updateArticle: article({ title: 'Titre initial!' }) } })
-      // Deux passages de micro-tâches : un pour la résolution de la promesse
-      // `UpdateArticle`, un pour l'appel (fire-and-forget) à `runAnalyze()`
-      // déclenché juste après — `waitFor` ne peut pas être utilisé ici : ses
-      // sondages reposent sur `setTimeout`, gelé par `vi.useFakeTimers()`.
+      // Deux passages de micro-tâches pour laisser la résolution de la
+      // promesse `UpdateArticle` se propager jusqu'au `setSaveStatus` du
+      // `finally` — `waitFor` ne peut pas être utilisé ici : ses sondages
+      // reposent sur `setTimeout`, gelé par `vi.useFakeTimers()`. (Ne
+      // déclenche PLUS `runAnalyze()` après la sauvegarde, voir Correction 7.)
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -185,5 +186,54 @@ describe('ArticleEditor — sauvegarde temporisée', () => {
     })
     expect(screen.getByText('Enregistré')).toBeDefined()
     expect(browserSdk.UpdateArticle).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('ArticleEditor — Correction 7 (amplification d’écriture SEO)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("n'appelle PAS analyzeSeo automatiquement après une sauvegarde réussie (seul un clic explicite sur « Analyser »/« Réanalyser » doit le faire)", async () => {
+    // `analyzeSeo` INSÈRE une ligne `SeoReport` à chaque appel (voir
+    // `SeoService.analyze`, sans déduplication) : le rappeler à chaque
+    // sauvegarde temporisée (1,5 s) produirait des centaines de rapports par
+    // article au fil d'une session de rédaction, sur une table sans purge.
+    vi.mocked(browserSdk.UpdateArticle).mockResolvedValue({ data: { updateArticle: article() } } as never)
+    vi.mocked(browserSdk.AnalyzeSeo).mockResolvedValue({ data: { analyzeSeo: REPORT } } as never)
+    renderEditor()
+
+    fireEvent.change(screen.getByLabelText('Titre de l’article'), { target: { value: 'Titre modifié' } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500)
+    })
+    expect(browserSdk.UpdateArticle).toHaveBeenCalledTimes(1)
+
+    // Laisse le temps à un éventuel appel fire-and-forget de partir.
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(browserSdk.AnalyzeSeo).not.toHaveBeenCalled()
+  })
+
+  it("n'appelle PAS analyzeSeo au montage, même pour un article jamais analysé (initialSeoReport === null) — un VIEWER sans le rôle requis ne doit pas essuyer d'erreur au simple chargement", async () => {
+    vi.mocked(browserSdk.AnalyzeSeo).mockResolvedValue({ data: { analyzeSeo: REPORT } } as never)
+    render(
+      <ToastProvider>
+        <ArticleEditor domainId="d1" article={article()} categories={[]} allTags={[]} initialSeoReport={null} />
+      </ToastProvider>,
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(browserSdk.AnalyzeSeo).not.toHaveBeenCalled()
   })
 })

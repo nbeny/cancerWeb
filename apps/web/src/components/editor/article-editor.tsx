@@ -125,15 +125,6 @@ export function ArticleEditor({ domainId, article: initialArticle, categories, a
     [],
   )
 
-  // Un article jamais analysé (`latestSeoScore === null`, voir la query
-  // serveur de la page) n'a pas de `metrics` à afficher dans le panneau
-  // méta tant que l'utilisateur n'a rien tapé : un seul appel au montage
-  // comble ce manque, sans jamais appeler `analyzeSeo` à chaque frappe.
-  useEffect(() => {
-    if (initialSeoReport === null) void runAnalyze()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- volontairement au montage seulement
-  }, [])
-
   function scheduleSave() {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => {
@@ -158,7 +149,16 @@ export function ArticleEditor({ domainId, article: initialArticle, categories, a
       const { data } = await browserSdk.UpdateArticle({ domainId, id: article.id, input: toInput(fieldsRef.current) })
       setArticle(data.updateArticle)
       setSaveStatus('saved')
-      void runAnalyze()
+      // Correction 7 (revue finale du Lot 1) : `analyzeSeo` INSÈRE une ligne
+      // `SeoReport` à chaque appel, sans déduplication, et relance en plus
+      // une requête séquentielle par lien interne. Le rappeler ici à chaque
+      // sauvegarde temporisée (1,5 s) produisait des centaines de rapports
+      // par article au fil d'une session de rédaction, sur une table sans
+      // purge. Seule une action explicite de l'utilisateur (le bouton
+      // « Analyser »/« Réanalyser » de `seo-panel.tsx`, ou la restauration
+      // d'une version dans `handleRestored`) déclenche maintenant une
+      // analyse — `seoStale` (déjà mis à `true` par `updateField`) suffit à
+      // signaler visuellement que le score affiché est périmé en attendant.
     } catch (error) {
       // Le texte saisi N'EST PAS effacé ni écrasé ici : `fields` reste tel
       // quel, seul l'indicateur change. `retrySave` (bouton "Réessayer" du
