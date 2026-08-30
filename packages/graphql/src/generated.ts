@@ -193,7 +193,18 @@ export type ArticleCategoriesQueryVariables = Exact<{
 
 export type ArticleCategoriesQuery = { categories: Array<{ id: string, name: string, slug: string }> };
 
-export type ArticleEditorFieldsFragment = { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, latestSeoScore: number | null, currentVersion: number, wordCount: number, createdAt: string, updatedAt: string, author: { id: string, name: string } };
+export type ArticleTagsQueryVariables = Exact<{
+  domainId: string | number;
+}>;
+
+
+export type ArticleTagsQuery = { tags: Array<{ id: string, name: string, slug: string }> };
+
+export type ArticleEditorFieldsFragment = { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> };
+
+export type ArticleStatusFieldsFragment = { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string };
+
+export type ArticleTaxonomyFieldsFragment = { id: string, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> };
 
 export type ArticleQueryVariables = Exact<{
   domainId: string | number;
@@ -201,7 +212,7 @@ export type ArticleQueryVariables = Exact<{
 }>;
 
 
-export type ArticleQuery = { article: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, latestSeoScore: number | null, currentVersion: number, wordCount: number, createdAt: string, updatedAt: string, author: { id: string, name: string } } };
+export type ArticleQuery = { article: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> } };
 
 export type UpdateArticleMutationVariables = Exact<{
   domainId: string | number;
@@ -210,7 +221,100 @@ export type UpdateArticleMutationVariables = Exact<{
 }>;
 
 
-export type UpdateArticleMutation = { updateArticle: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, latestSeoScore: number | null, currentVersion: number, wordCount: number, createdAt: string, updatedAt: string, author: { id: string, name: string } } };
+export type UpdateArticleMutation = { updateArticle: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> } };
+
+export type SetArticleCategoryMutationVariables = Exact<{
+  domainId: string | number;
+  articleId: string | number;
+  categoryId?: string | number | null | undefined;
+}>;
+
+
+export type SetArticleCategoryMutation = { setArticleCategory: { id: string, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> } };
+
+export type SetArticleTagsMutationVariables = Exact<{
+  domainId: string | number;
+  articleId: string | number;
+  tagIds: Array<string | number> | string | number;
+}>;
+
+
+export type SetArticleTagsMutation = { setArticleTags: { id: string, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> } };
+
+export type SubmitForReviewMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type SubmitForReviewMutation = { submitForReview: { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string } };
+
+export type ApproveArticleMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type ApproveArticleMutation = { approveArticle: { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string } };
+
+export type RejectArticleMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type RejectArticleMutation = { rejectArticle: { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string } };
+
+export type PublishArticleMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type PublishArticleMutation = { publishArticle: { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string } };
+
+export type ScheduleArticleMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+  scheduledAt: string;
+}>;
+
+
+export type ScheduleArticleMutation = { scheduleArticle: { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string } };
+
+export type ArchiveArticleMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type ArchiveArticleMutation = { archiveArticle: { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string } };
+
+export type ArticleVersionsQueryVariables = Exact<{
+  domainId: string | number;
+  articleId: string | number;
+}>;
+
+
+export type ArticleVersionsQuery = { articleVersions: Array<{ id: string, version: number, title: string, content: string, changeNote: string | null, createdAt: string, createdById: string }> };
+
+export type CreateArticleVersionMutationVariables = Exact<{
+  domainId: string | number;
+  articleId: string | number;
+  changeNote?: string | null | undefined;
+}>;
+
+
+export type CreateArticleVersionMutation = { createArticleVersion: { id: string, version: number, title: string, content: string, changeNote: string | null, createdAt: string, createdById: string } };
+
+export type RestoreArticleVersionMutationVariables = Exact<{
+  domainId: string | number;
+  articleId: string | number;
+  version: number;
+}>;
+
+
+export type RestoreArticleVersionMutation = { restoreArticleVersion: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> } };
 
 export type LoginMutationVariables = Exact<{
   input: LoginInput;
@@ -278,6 +382,25 @@ export type DeleteDomainMutationVariables = Exact<{
 
 
 export type DeleteDomainMutation = { deleteDomain: boolean };
+
+export type SeoReportFieldsFragment = { id: string, articleId: string, score: number, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> };
+
+export type AnalyzeSeoMutationVariables = Exact<{
+  domainId: string | number;
+  articleId: string | number;
+}>;
+
+
+export type AnalyzeSeoMutation = { analyzeSeo: { id: string, articleId: string, score: number, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> } };
+
+export type SeoReportsQueryVariables = Exact<{
+  domainId: string | number;
+  articleId: string | number;
+  page?: PageInput | null | undefined;
+}>;
+
+
+export type SeoReportsQuery = { seoReports: { totalCount: number, items: Array<{ id: string, articleId: string, score: number, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> }> } };
 
 export type TopicFieldsFragment = { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string };
 
@@ -368,12 +491,55 @@ export const ArticleEditorFieldsFragmentDoc = gql`
   status
   content
   renderedHtml
+  excerpt
+  coverImageUrl
+  seoTitle
+  metaDescription
+  focusKeyword
+  secondaryKeywords
+  canonicalUrl
+  robotsIndex
+  robotsFollow
   latestSeoScore
   currentVersion
   wordCount
+  topicId
+  publishedAt
+  scheduledAt
   createdAt
   updatedAt
   author {
+    id
+    name
+  }
+  category {
+    id
+    name
+  }
+  tags {
+    id
+    name
+  }
+}
+    `;
+export const ArticleStatusFieldsFragmentDoc = gql`
+    fragment ArticleStatusFields on Article {
+  id
+  status
+  currentVersion
+  publishedAt
+  scheduledAt
+  updatedAt
+}
+    `;
+export const ArticleTaxonomyFieldsFragmentDoc = gql`
+    fragment ArticleTaxonomyFields on Article {
+  id
+  category {
+    id
+    name
+  }
+  tags {
     id
     name
   }
@@ -397,6 +563,21 @@ export const DomainFieldsFragmentDoc = gql`
   reviewOutline
   createdAt
   updatedAt
+}
+    `;
+export const SeoReportFieldsFragmentDoc = gql`
+    fragment SeoReportFields on SeoReport {
+  id
+  articleId
+  score
+  computedAt
+  issues {
+    code
+    severity
+    message
+    field
+  }
+  metrics
 }
     `;
 export const TopicFieldsFragmentDoc = gql`
@@ -445,6 +626,15 @@ export const ArticleCategoriesDocument = gql`
   }
 }
     `;
+export const ArticleTagsDocument = gql`
+    query ArticleTags($domainId: ID!) {
+  tags(domainId: $domainId) {
+    id
+    name
+    slug
+  }
+}
+    `;
 export const ArticleDocument = gql`
     query Article($domainId: ID!, $id: ID!) {
   article(domainId: $domainId, id: $id) {
@@ -455,6 +645,107 @@ export const ArticleDocument = gql`
 export const UpdateArticleDocument = gql`
     mutation UpdateArticle($domainId: ID!, $id: ID!, $input: UpdateArticleInput!) {
   updateArticle(domainId: $domainId, id: $id, input: $input) {
+    ...ArticleEditorFields
+  }
+}
+    ${ArticleEditorFieldsFragmentDoc}`;
+export const SetArticleCategoryDocument = gql`
+    mutation SetArticleCategory($domainId: ID!, $articleId: ID!, $categoryId: ID) {
+  setArticleCategory(
+    domainId: $domainId
+    articleId: $articleId
+    categoryId: $categoryId
+  ) {
+    ...ArticleTaxonomyFields
+  }
+}
+    ${ArticleTaxonomyFieldsFragmentDoc}`;
+export const SetArticleTagsDocument = gql`
+    mutation SetArticleTags($domainId: ID!, $articleId: ID!, $tagIds: [ID!]!) {
+  setArticleTags(domainId: $domainId, articleId: $articleId, tagIds: $tagIds) {
+    ...ArticleTaxonomyFields
+  }
+}
+    ${ArticleTaxonomyFieldsFragmentDoc}`;
+export const SubmitForReviewDocument = gql`
+    mutation SubmitForReview($domainId: ID!, $id: ID!) {
+  submitForReview(domainId: $domainId, id: $id) {
+    ...ArticleStatusFields
+  }
+}
+    ${ArticleStatusFieldsFragmentDoc}`;
+export const ApproveArticleDocument = gql`
+    mutation ApproveArticle($domainId: ID!, $id: ID!) {
+  approveArticle(domainId: $domainId, id: $id) {
+    ...ArticleStatusFields
+  }
+}
+    ${ArticleStatusFieldsFragmentDoc}`;
+export const RejectArticleDocument = gql`
+    mutation RejectArticle($domainId: ID!, $id: ID!) {
+  rejectArticle(domainId: $domainId, id: $id) {
+    ...ArticleStatusFields
+  }
+}
+    ${ArticleStatusFieldsFragmentDoc}`;
+export const PublishArticleDocument = gql`
+    mutation PublishArticle($domainId: ID!, $id: ID!) {
+  publishArticle(domainId: $domainId, id: $id) {
+    ...ArticleStatusFields
+  }
+}
+    ${ArticleStatusFieldsFragmentDoc}`;
+export const ScheduleArticleDocument = gql`
+    mutation ScheduleArticle($domainId: ID!, $id: ID!, $scheduledAt: DateTime!) {
+  scheduleArticle(domainId: $domainId, id: $id, scheduledAt: $scheduledAt) {
+    ...ArticleStatusFields
+  }
+}
+    ${ArticleStatusFieldsFragmentDoc}`;
+export const ArchiveArticleDocument = gql`
+    mutation ArchiveArticle($domainId: ID!, $id: ID!) {
+  archiveArticle(domainId: $domainId, id: $id) {
+    ...ArticleStatusFields
+  }
+}
+    ${ArticleStatusFieldsFragmentDoc}`;
+export const ArticleVersionsDocument = gql`
+    query ArticleVersions($domainId: ID!, $articleId: ID!) {
+  articleVersions(domainId: $domainId, articleId: $articleId) {
+    id
+    version
+    title
+    content
+    changeNote
+    createdAt
+    createdById
+  }
+}
+    `;
+export const CreateArticleVersionDocument = gql`
+    mutation CreateArticleVersion($domainId: ID!, $articleId: ID!, $changeNote: String) {
+  createArticleVersion(
+    domainId: $domainId
+    articleId: $articleId
+    changeNote: $changeNote
+  ) {
+    id
+    version
+    title
+    content
+    changeNote
+    createdAt
+    createdById
+  }
+}
+    `;
+export const RestoreArticleVersionDocument = gql`
+    mutation RestoreArticleVersion($domainId: ID!, $articleId: ID!, $version: Int!) {
+  restoreArticleVersion(
+    domainId: $domainId
+    articleId: $articleId
+    version: $version
+  ) {
     ...ArticleEditorFields
   }
 }
@@ -548,6 +839,23 @@ export const DeleteDomainDocument = gql`
   deleteDomain(id: $id)
 }
     `;
+export const AnalyzeSeoDocument = gql`
+    mutation AnalyzeSeo($domainId: ID!, $articleId: ID!) {
+  analyzeSeo(domainId: $domainId, articleId: $articleId) {
+    ...SeoReportFields
+  }
+}
+    ${SeoReportFieldsFragmentDoc}`;
+export const SeoReportsDocument = gql`
+    query SeoReports($domainId: ID!, $articleId: ID!, $page: PageInput) {
+  seoReports(domainId: $domainId, articleId: $articleId, page: $page) {
+    items {
+      ...SeoReportFields
+    }
+    totalCount
+  }
+}
+    ${SeoReportFieldsFragmentDoc}`;
 export const TopicsDocument = gql`
     query Topics($domainId: ID!, $page: PageInput, $status: TopicStatus) {
   topics(domainId: $domainId, page: $page, status: $status) {
@@ -606,8 +914,20 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 const ArticlesDocumentString = print(ArticlesDocument);
 const CreateArticleDocumentString = print(CreateArticleDocument);
 const ArticleCategoriesDocumentString = print(ArticleCategoriesDocument);
+const ArticleTagsDocumentString = print(ArticleTagsDocument);
 const ArticleDocumentString = print(ArticleDocument);
 const UpdateArticleDocumentString = print(UpdateArticleDocument);
+const SetArticleCategoryDocumentString = print(SetArticleCategoryDocument);
+const SetArticleTagsDocumentString = print(SetArticleTagsDocument);
+const SubmitForReviewDocumentString = print(SubmitForReviewDocument);
+const ApproveArticleDocumentString = print(ApproveArticleDocument);
+const RejectArticleDocumentString = print(RejectArticleDocument);
+const PublishArticleDocumentString = print(PublishArticleDocument);
+const ScheduleArticleDocumentString = print(ScheduleArticleDocument);
+const ArchiveArticleDocumentString = print(ArchiveArticleDocument);
+const ArticleVersionsDocumentString = print(ArticleVersionsDocument);
+const CreateArticleVersionDocumentString = print(CreateArticleVersionDocument);
+const RestoreArticleVersionDocumentString = print(RestoreArticleVersionDocument);
 const LoginDocumentString = print(LoginDocument);
 const RegisterDocumentString = print(RegisterDocument);
 const RefreshDocumentString = print(RefreshDocument);
@@ -618,6 +938,8 @@ const DomainByIdDocumentString = print(DomainByIdDocument);
 const CreateDomainDocumentString = print(CreateDomainDocument);
 const UpdateDomainDocumentString = print(UpdateDomainDocument);
 const DeleteDomainDocumentString = print(DeleteDomainDocument);
+const AnalyzeSeoDocumentString = print(AnalyzeSeoDocument);
+const SeoReportsDocumentString = print(SeoReportsDocument);
 const TopicsDocumentString = print(TopicsDocument);
 const TopicByIdDocumentString = print(TopicByIdDocument);
 const CreateTopicDocumentString = print(CreateTopicDocument);
@@ -636,11 +958,47 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     ArticleCategories(variables: ArticleCategoriesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArticleCategoriesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArticleCategoriesQuery>(ArticleCategoriesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ArticleCategories', 'query', variables);
     },
+    ArticleTags(variables: ArticleTagsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArticleTagsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArticleTagsQuery>(ArticleTagsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ArticleTags', 'query', variables);
+    },
     Article(variables: ArticleQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArticleQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArticleQuery>(ArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Article', 'query', variables);
     },
     UpdateArticle(variables: UpdateArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UpdateArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<UpdateArticleMutation>(UpdateArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateArticle', 'mutation', variables);
+    },
+    SetArticleCategory(variables: SetArticleCategoryMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SetArticleCategoryMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SetArticleCategoryMutation>(SetArticleCategoryDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SetArticleCategory', 'mutation', variables);
+    },
+    SetArticleTags(variables: SetArticleTagsMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SetArticleTagsMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SetArticleTagsMutation>(SetArticleTagsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SetArticleTags', 'mutation', variables);
+    },
+    SubmitForReview(variables: SubmitForReviewMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SubmitForReviewMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SubmitForReviewMutation>(SubmitForReviewDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SubmitForReview', 'mutation', variables);
+    },
+    ApproveArticle(variables: ApproveArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ApproveArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ApproveArticleMutation>(ApproveArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ApproveArticle', 'mutation', variables);
+    },
+    RejectArticle(variables: RejectArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RejectArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RejectArticleMutation>(RejectArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RejectArticle', 'mutation', variables);
+    },
+    PublishArticle(variables: PublishArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PublishArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PublishArticleMutation>(PublishArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PublishArticle', 'mutation', variables);
+    },
+    ScheduleArticle(variables: ScheduleArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ScheduleArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ScheduleArticleMutation>(ScheduleArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ScheduleArticle', 'mutation', variables);
+    },
+    ArchiveArticle(variables: ArchiveArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArchiveArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArchiveArticleMutation>(ArchiveArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ArchiveArticle', 'mutation', variables);
+    },
+    ArticleVersions(variables: ArticleVersionsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: ArticleVersionsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<ArticleVersionsQuery>(ArticleVersionsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ArticleVersions', 'query', variables);
+    },
+    CreateArticleVersion(variables: CreateArticleVersionMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateArticleVersionMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateArticleVersionMutation>(CreateArticleVersionDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateArticleVersion', 'mutation', variables);
+    },
+    RestoreArticleVersion(variables: RestoreArticleVersionMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RestoreArticleVersionMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RestoreArticleVersionMutation>(RestoreArticleVersionDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RestoreArticleVersion', 'mutation', variables);
     },
     Login(variables: LoginMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LoginMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LoginMutation>(LoginDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Login', 'mutation', variables);
@@ -671,6 +1029,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     DeleteDomain(variables: DeleteDomainMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteDomainMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteDomainMutation>(DeleteDomainDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteDomain', 'mutation', variables);
+    },
+    AnalyzeSeo(variables: AnalyzeSeoMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: AnalyzeSeoMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<AnalyzeSeoMutation>(AnalyzeSeoDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'AnalyzeSeo', 'mutation', variables);
+    },
+    SeoReports(variables: SeoReportsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SeoReportsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SeoReportsQuery>(SeoReportsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SeoReports', 'query', variables);
     },
     Topics(variables: TopicsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TopicsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<TopicsQuery>(TopicsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Topics', 'query', variables);

@@ -1,0 +1,32 @@
+# `SeoReport` n'expose pas `cappedBy` côté GraphQL (voir `apps/api/src/seo/seo.types.ts`) :
+# seul `apps/api/src/seo/analyzer.ts` le calcule en interne, comme
+# `blocking.map((i) => i.code)` — c'est-à-dire EXACTEMENT
+# `issues.filter(i => i.severity === 'BLOCKING').map(i => i.code)`. Le panneau
+# SEO (Task 17) reproduit ce filtre côté client plutôt que de dupliquer une
+# règle métier : ce n'est pas un recalcul (aucune divergence possible, c'est
+# la même liste), seulement une projection des `issues` déjà renvoyées. Voir
+# le rapport de la Task 16-17 pour la mention explicite de cet écart de schéma.
+fragment SeoReportFields on SeoReport {
+  id
+  articleId
+  score
+  computedAt
+  issues {
+    code
+    severity
+    message
+    field
+  }
+  metrics
+}
+
+mutation AnalyzeSeo($domainId: ID!, $articleId: ID!) {
+  analyzeSeo(domainId: $domainId, articleId: $articleId) { ...SeoReportFields }
+}
+
+query SeoReports($domainId: ID!, $articleId: ID!, $page: PageInput) {
+  seoReports(domainId: $domainId, articleId: $articleId, page: $page) {
+    items { ...SeoReportFields }
+    totalCount
+  }
+}

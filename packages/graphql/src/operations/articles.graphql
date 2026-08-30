@@ -42,11 +42,23 @@ query ArticleCategories($domainId: ID!) {
   }
 }
 
+query ArticleTags($domainId: ID!) {
+  tags(domainId: $domainId) {
+    id
+    name
+    slug
+  }
+}
+
 # ---------------------------------------------------------------------------
-# Éditeur d'article (Task 16). `ArticleEditorFields` porte les champs
-# affichés/édités par l'écran d'édition — contenu et HTML déjà sanitizé côté
-# serveur (`renderedHtml`, jamais réinterprété côté client). Élargi à la
-# Task 17 avec les métadonnées SEO, la catégorie et les tags.
+# Éditeur d'article (Tasks 16-17). `ArticleEditorFields` porte tous les champs
+# affichés/édités par l'écran d'édition — contenu, HTML déjà sanitizé côté
+# serveur (`renderedHtml`, jamais réinterprété côté client), et l'intégralité
+# des métadonnées SEO. `ArticleStatusFields` et `ArticleTaxonomyFields` sont
+# des fragments plus étroits pour les mutations qui ne touchent PAS le
+# contenu (transitions, catégorie/tags) : réutiliser `ArticleEditorFields` sur
+# ces mutations réémettrait `content`/`renderedHtml` à chaque transition, pour
+# une valeur qui n'a pas changé.
 # ---------------------------------------------------------------------------
 
 fragment ArticleEditorFields on Article {
@@ -57,12 +69,41 @@ fragment ArticleEditorFields on Article {
   status
   content
   renderedHtml
+  excerpt
+  coverImageUrl
+  seoTitle
+  metaDescription
+  focusKeyword
+  secondaryKeywords
+  canonicalUrl
+  robotsIndex
+  robotsFollow
   latestSeoScore
   currentVersion
   wordCount
+  topicId
+  publishedAt
+  scheduledAt
   createdAt
   updatedAt
   author { id name }
+  category { id name }
+  tags { id name }
+}
+
+fragment ArticleStatusFields on Article {
+  id
+  status
+  currentVersion
+  publishedAt
+  scheduledAt
+  updatedAt
+}
+
+fragment ArticleTaxonomyFields on Article {
+  id
+  category { id name }
+  tags { id name }
 }
 
 query Article($domainId: ID!, $id: ID!) {
@@ -71,4 +112,70 @@ query Article($domainId: ID!, $id: ID!) {
 
 mutation UpdateArticle($domainId: ID!, $id: ID!, $input: UpdateArticleInput!) {
   updateArticle(domainId: $domainId, id: $id, input: $input) { ...ArticleEditorFields }
+}
+
+mutation SetArticleCategory($domainId: ID!, $articleId: ID!, $categoryId: ID) {
+  setArticleCategory(domainId: $domainId, articleId: $articleId, categoryId: $categoryId) {
+    ...ArticleTaxonomyFields
+  }
+}
+
+mutation SetArticleTags($domainId: ID!, $articleId: ID!, $tagIds: [ID!]!) {
+  setArticleTags(domainId: $domainId, articleId: $articleId, tagIds: $tagIds) {
+    ...ArticleTaxonomyFields
+  }
+}
+
+mutation SubmitForReview($domainId: ID!, $id: ID!) {
+  submitForReview(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+mutation ApproveArticle($domainId: ID!, $id: ID!) {
+  approveArticle(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+mutation RejectArticle($domainId: ID!, $id: ID!) {
+  rejectArticle(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+mutation PublishArticle($domainId: ID!, $id: ID!) {
+  publishArticle(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+mutation ScheduleArticle($domainId: ID!, $id: ID!, $scheduledAt: DateTime!) {
+  scheduleArticle(domainId: $domainId, id: $id, scheduledAt: $scheduledAt) { ...ArticleStatusFields }
+}
+
+mutation ArchiveArticle($domainId: ID!, $id: ID!) {
+  archiveArticle(domainId: $domainId, id: $id) { ...ArticleStatusFields }
+}
+
+query ArticleVersions($domainId: ID!, $articleId: ID!) {
+  articleVersions(domainId: $domainId, articleId: $articleId) {
+    id
+    version
+    title
+    content
+    changeNote
+    createdAt
+    createdById
+  }
+}
+
+mutation CreateArticleVersion($domainId: ID!, $articleId: ID!, $changeNote: String) {
+  createArticleVersion(domainId: $domainId, articleId: $articleId, changeNote: $changeNote) {
+    id
+    version
+    title
+    content
+    changeNote
+    createdAt
+    createdById
+  }
+}
+
+mutation RestoreArticleVersion($domainId: ID!, $articleId: ID!, $version: Int!) {
+  restoreArticleVersion(domainId: $domainId, articleId: $articleId, version: $version) {
+    ...ArticleEditorFields
+  }
 }

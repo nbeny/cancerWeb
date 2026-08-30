@@ -2,10 +2,16 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { ArticleEditorFieldsFragment } from '@cancerweb/graphql'
 import { browserSdk } from '@/lib/graphql-client'
+import { ToastProvider } from '@/components/ui/toast'
 import { ArticleEditor } from './article-editor'
 
 vi.mock('@/lib/graphql-client', () => ({
-  browserSdk: { UpdateArticle: vi.fn() },
+  browserSdk: {
+    UpdateArticle: vi.fn(),
+    AnalyzeSeo: vi.fn(),
+    SetArticleCategory: vi.fn(),
+    SetArticleTags: vi.fn(),
+  },
 }))
 
 // `article-editor.tsx` charge `MarkdownEditor` via `next/dynamic(..., { ssr:
@@ -31,18 +37,45 @@ function article(overrides: Partial<ArticleEditorFieldsFragment> = {}): ArticleE
     status: 'DRAFT',
     content: '# Contenu',
     renderedHtml: '<h1>Contenu</h1>',
-    latestSeoScore: null,
+    excerpt: null,
+    coverImageUrl: null,
+    seoTitle: null,
+    metaDescription: null,
+    focusKeyword: null,
+    secondaryKeywords: [],
+    canonicalUrl: null,
+    robotsIndex: true,
+    robotsFollow: true,
+    latestSeoScore: 80,
     currentVersion: 1,
     wordCount: 2,
+    topicId: null,
+    publishedAt: null,
+    scheduledAt: null,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     author: { id: 'u1', name: 'Alice' },
+    category: null,
+    tags: [],
     ...overrides,
   }
 }
 
+const REPORT = {
+  id: 'r1',
+  articleId: 'a1',
+  score: 80,
+  computedAt: '2026-01-01T00:00:00.000Z',
+  metrics: {},
+  issues: [],
+}
+
 function renderEditor(overrides: Partial<ArticleEditorFieldsFragment> = {}) {
-  return render(<ArticleEditor domainId="d1" article={article(overrides)} />)
+  return render(
+    <ToastProvider>
+      <ArticleEditor domainId="d1" article={article(overrides)} categories={[]} allTags={[]} initialSeoReport={REPORT} />
+    </ToastProvider>,
+  )
 }
 
 describe('ArticleEditor — sauvegarde temporisée', () => {
@@ -70,6 +103,7 @@ describe('ArticleEditor — sauvegarde temporisée', () => {
 
   it("n'envoie qu'UN SEUL appel pour plusieurs frappes rapprochées (debounce, pas d'appel à chaque frappe)", async () => {
     vi.mocked(browserSdk.UpdateArticle).mockResolvedValue({ data: { updateArticle: article() } } as never)
+    vi.mocked(browserSdk.AnalyzeSeo).mockResolvedValue({ data: { analyzeSeo: REPORT } } as never)
     renderEditor()
 
     const input = screen.getByLabelText('Titre de l’article')
@@ -98,6 +132,7 @@ describe('ArticleEditor — sauvegarde temporisée', () => {
         resolveUpdate = resolve
       }) as never,
     )
+    vi.mocked(browserSdk.AnalyzeSeo).mockResolvedValue({ data: { analyzeSeo: REPORT } } as never)
     renderEditor()
 
     expect(screen.getByText('Enregistré')).toBeDefined()
@@ -112,9 +147,11 @@ describe('ArticleEditor — sauvegarde temporisée', () => {
 
     await act(async () => {
       resolveUpdate({ data: { updateArticle: article({ title: 'Titre initial!' }) } })
-      // `waitFor` ne peut pas être utilisé ici : ses sondages reposent sur
-      // `setTimeout`, gelé par `vi.useFakeTimers()`. Un passage de
-      // micro-tâche suffit à laisser la promesse résolue se propager.
+      // Deux passages de micro-tâches : un pour la résolution de la promesse
+      // `UpdateArticle`, un pour l'appel (fire-and-forget) à `runAnalyze()`
+      // déclenché juste après — `waitFor` ne peut pas être utilisé ici : ses
+      // sondages reposent sur `setTimeout`, gelé par `vi.useFakeTimers()`.
+      await Promise.resolve()
       await Promise.resolve()
     })
     expect(screen.getByText('Enregistré')).toBeDefined()
@@ -124,6 +161,7 @@ describe('ArticleEditor — sauvegarde temporisée', () => {
     vi.mocked(browserSdk.UpdateArticle)
       .mockRejectedValueOnce({ response: { errors: [{ message: 'Le serveur ne répond pas' }] } })
       .mockResolvedValueOnce({ data: { updateArticle: article({ title: 'Titre initial modifié' }) } } as never)
+    vi.mocked(browserSdk.AnalyzeSeo).mockResolvedValue({ data: { analyzeSeo: REPORT } } as never)
     renderEditor()
 
     const titleInput = screen.getByLabelText('Titre de l’article') as HTMLInputElement
@@ -140,6 +178,7 @@ describe('ArticleEditor — sauvegarde temporisée', () => {
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Réessayer' }))
+      await Promise.resolve()
       await Promise.resolve()
     })
     expect(screen.getByText('Enregistré')).toBeDefined()

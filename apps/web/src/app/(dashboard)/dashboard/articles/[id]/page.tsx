@@ -40,11 +40,6 @@ export default async function ArticleEditorPage({ params, searchParams }: PagePr
   const cookieHeader = (await cookies()).toString()
   const sdk = serverSdk(cookieHeader)
 
-  // La construction de JSX doit rester HORS du try/catch (règle
-  // `react-hooks/error-boundaries` : React ne rend pas immédiatement le JSX
-  // construit ici, une erreur de rendu ne serait de toute façon pas
-  // rattrapée par ce catch) — seul l'appel réseau, qui peut réellement
-  // lever, y reste.
   let article
   try {
     const { data } = await sdk.Article({ domainId, id })
@@ -68,5 +63,24 @@ export default async function ArticleEditorPage({ params, searchParams }: PagePr
     throw error
   }
 
-  return <ArticleEditor domainId={domainId} article={article} />
+  const [{ data: categoriesData }, { data: tagsData }, { data: seoReportsData }] = await Promise.all([
+    sdk.ArticleCategories({ domainId }),
+    sdk.ArticleTags({ domainId }),
+    sdk.SeoReports({ domainId, articleId: id, page: { limit: 1, offset: 0 } }),
+  ])
+
+  // Le plus récent est en tête (`seoReports` trie par `computedAt` décroissant,
+  // voir `apps/api/src/seo/seo.service.ts`) — un tableau vide, jamais `null`,
+  // distingue « jamais analysé » d'un score de 0 (voir `SeoPanel`).
+  const initialSeoReport = seoReportsData.seoReports.items[0] ?? null
+
+  return (
+    <ArticleEditor
+      domainId={domainId}
+      article={article}
+      categories={categoriesData.categories}
+      allTags={tagsData.tags}
+      initialSeoReport={initialSeoReport}
+    />
+  )
 }
