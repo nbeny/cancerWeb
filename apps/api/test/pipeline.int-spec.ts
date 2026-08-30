@@ -63,8 +63,8 @@ const PIPELINE_RUN = `
 const CANCEL_RUN = `
   mutation ($domainId: ID!, $id: ID!) { cancelPipelineRun(domainId: $domainId, id: $id) { ${RUN_FIELDS} } }`
 const REGENERATE_STEP = `
-  mutation ($domainId: ID!, $runId: ID!, $stepType: StepType!) {
-    regeneratePipelineStep(domainId: $domainId, runId: $runId, stepType: $stepType) { ${RUN_FIELDS} }
+  mutation ($domainId: ID!, $runId: ID!, $step: StepType!) {
+    regenerateStep(domainId: $domainId, runId: $runId, step: $step) { ${RUN_FIELDS} }
   }`
 
 async function signUp(email: string): Promise<string[]> {
@@ -216,8 +216,8 @@ describe('pipeline (Task 5 — orchestration)', () => {
       const outlineJobsBefore = await h.prisma.aIJob.count({ where: { type: StepType.OUTLINE } })
       expect(outlineJobsBefore).toBe(1)
 
-      const replayed = (await h.gql(REGENERATE_STEP, { domainId, runId, stepType: 'DRAFT' }, cookies)).body.data
-        .regeneratePipelineStep
+      const replayed = (await h.gql(REGENERATE_STEP, { domainId, runId, step: 'DRAFT' }, cookies)).body.data
+        .regenerateStep
       expect(replayed.status).toBe('RUNNING')
 
       const draftSteps = await h.prisma.pipelineStep.findMany({ where: { runId, type: StepType.DRAFT }, orderBy: { attempt: 'asc' } })
@@ -412,6 +412,250 @@ describe('pipeline (Task 5 — orchestration)', () => {
       expect(intact.status).toBe('PENDING') // pas touché par la tentative d'Alice
 
       await queue.pumpAll()
+    })
+
+    it('ferme le même chemin sur regenerateStep : domainId dont on est membre + runId d’un autre domaine échoue en NOT_FOUND, jamais en CONFLICT', async () => {
+      const alice = await signUp('alice@example.com')
+      const idAlice = await createDomain(alice, 'Domaine Alice')
+
+      const bob = await signUp('bob@example.com')
+      const idBob = await createDomain(bob, 'Domaine Bob')
+      const topicBob = await createTopic(bob, idBob)
+      const runBob = (await h.gql(GENERATE_ARTICLE, { domainId: idBob, topicId: topicBob }, bob)).body.data.generateArticle
+      await queue.pumpAll() // run de Bob COMPLETED : sans ça, une simple confusion de rôle donnerait déjà CONFLICT (run en cours), masquant le test d'isolation.
+
+      const usurpation = await h.gql(REGENERATE_STEP, { domainId: idAlice, runId: runBob.id, step: 'DRAFT' }, alice)
+      expect(usurpation.body.data?.regenerateStep).toBeFalsy()
+      expect(errorCode(usurpation.body)).toBe('NOT_FOUND')
+
+      const draftSteps = await h.prisma.pipelineStep.findMany({ where: { runId: runBob.id, type: StepType.DRAFT } })
+      expect(draftSteps).toHaveLength(1) // pas de rejeu déclenché par la tentative d'Alice
+    })
+  })
+
+  describe('generateTopics (Task 6)', () => {
+    const GENERATE_TOPICS = `
+      mutation ($domainId: ID!, $input: GenerateTopicsInput!) { generateTopics(domainId: $domainId, input: $input) { ${RUN_FIELDS} } }`
+    const TOPICS = `
+      query ($domainId: ID!) { topics(domainId: $domainId, page: { limit: 50, offset: 0 }) { items { id title generatedByJobId } totalCount } }`
+
+    it('rejette un count hors bornes (0 et 21) avant tout appel IA', async () => {
+      const { cookies, domainId } = await setup()
+
+      const tooLow = await h.gql(GENERATE_TOPICS, { domainId, input: { count: 0 } }, cookies)
+      expect(errorCode(tooLow.body)).toBe('VALIDATION_FAILED')
+
+      const tooHigh = await h.gql(GENERATE_TOPICS, { domainId, input: { count: 21 } }, cookies)
+      expect(errorCode(tooHigh.body)).toBe('VALIDATION_FAILED')
+
+      expect(await h.prisma.pipelineRun.count()).toBe(0)
+    })
+
+    it('crée un run à une seule étape (TOPIC_GENERATION), qui persiste `count` sujets liés à l’AIJob une fois pompé', async () => {
+      // `setup()` crée aussi un sujet (pour `generateArticle`) : on part d'un
+      // domaine nu ici, pour que `topics.totalCount` ne compte QUE les sujets
+      // produits par cette génération.
+      const cookies = await signUp('alice@example.com')
+      const domainId = await createDomain(cookies)
+
+      const created = (await h.gql(GENERATE_TOPICS, { domainId, input: { count: 3 } }, cookies)).body.data.generateTopics
+      expect(created.status).toBe('PENDING')
+      expect(created.topicId).toBeNull()
+      expect(created.articleId).toBeNull()
+      expect(created.steps).toHaveLength(1)
+      expect(created.steps[0].type).toBe('TOPIC_GENERATION')
+
+      const processed = await queue.pumpAll()
+      expect(processed).toBe(1)
+
+      const finalRun = (await h.gql(PIPELINE_RUN, { domainId, id: created.id }, cookies)).body.data.pipelineRun
+      expect(finalRun.status).toBe('COMPLETED')
+      expect(finalRun.steps[0].status).toBe('COMPLETED')
+
+      const job = await h.prisma.aIJob.findFirstOrThrow({ where: { type: 'TOPIC_GENERATION' } })
+      expect(job.status).toBe('COMPLETED')
+
+      const topics = (await h.gql(TOPICS, { domainId }, cookies)).body.data.topics
+      expect(topics.totalCount).toBe(3)
+      for (const topic of topics.items) {
+        expect(topic.generatedByJobId).toBe(job.id)
+      }
+    })
+
+    it('regenerateStep refuse TOPIC_GENERATION : il ne fait pas partie du pipeline de génération d’article', async () => {
+      const { cookies, domainId } = await setup()
+      const created = (await h.gql(`
+        mutation ($domainId: ID!, $input: GenerateTopicsInput!) { generateTopics(domainId: $domainId, input: $input) { id } }`,
+        { domainId, input: { count: 1 } },
+        cookies,
+      )).body.data.generateTopics
+      await queue.pumpAll()
+
+      const res = await h.gql(REGENERATE_STEP, { domainId, runId: created.id, step: 'TOPIC_GENERATION' }, cookies)
+      expect(res.body.data?.regenerateStep).toBeFalsy()
+      expect(errorCode(res.body)).toBe('VALIDATION_FAILED')
+    })
+  })
+
+  describe('pipelineRuns / pipelineQueue / aiJobs (Task 6)', () => {
+    const PIPELINE_RUNS = `
+      query ($domainId: ID!, $filter: PipelineRunFilter, $page: PageInput) {
+        pipelineRuns(domainId: $domainId, filter: $filter, page: $page) { items { id status } totalCount }
+      }`
+    const PIPELINE_QUEUE_QUERY = `
+      query ($domainId: ID!) {
+        pipelineQueue(domainId: $domainId) { position estimatedWaitSeconds run { id status } }
+      }`
+    const AI_JOBS = `
+      query ($domainId: ID!, $filter: AIJobFilter) {
+        aiJobs(domainId: $domainId, filter: $filter) { items { id type status } totalCount }
+      }`
+
+    it('pipelineRuns liste, filtre par statut et pagine', async () => {
+      const { cookies, domainId, topicId } = await setup()
+      await h.gql(GENERATE_ARTICLE, { domainId, topicId }, cookies)
+      const topic2 = await createTopic(cookies, domainId, 'Second sujet')
+      const secondRun = (await h.gql(GENERATE_ARTICLE, { domainId, topicId: topic2 }, cookies)).body.data.generateArticle
+      await queue.pumpAll() // le run du second sujet est traité en dernier (FIFO) : COMPLETED
+
+      const all = (await h.gql(PIPELINE_RUNS, { domainId }, cookies)).body.data.pipelineRuns
+      expect(all.totalCount).toBe(2)
+
+      const completedOnly = (await h.gql(PIPELINE_RUNS, { domainId, filter: { status: 'COMPLETED' } }, cookies)).body.data.pipelineRuns
+      expect(completedOnly.totalCount).toBe(2)
+      expect(completedOnly.items.map((r: { id: string }) => r.id)).toContain(secondRun.id)
+
+      const firstPage = (await h.gql(PIPELINE_RUNS, { domainId, page: { limit: 1, offset: 0 } }, cookies)).body.data.pipelineRuns
+      expect(firstPage.items).toHaveLength(1)
+      expect(firstPage.totalCount).toBe(2)
+    })
+
+    it('pipelineQueue : sans historique d’AIJob, l’estimation est `null` plutôt qu’un chiffre inventé', async () => {
+      const { cookies, domainId, topicId } = await setup()
+      await h.gql(GENERATE_ARTICLE, { domainId, topicId }, cookies)
+
+      const queueResult = (await h.gql(PIPELINE_QUEUE_QUERY, { domainId }, cookies)).body.data.pipelineQueue
+      expect(queueResult).toHaveLength(1)
+      expect(queueResult[0].position).toBe(1)
+      expect(queueResult[0].estimatedWaitSeconds).toBeNull()
+
+      await queue.pumpAll()
+    })
+
+    it('pipelineQueue : la position reflète l’ordre RÉEL de la file, y compris à travers les domaines', async () => {
+      const alice = await signUp('alice@example.com')
+      const idAlice = await createDomain(alice, 'Domaine Alice')
+      const topicAlice1 = await createTopic(alice, idAlice, 'Sujet Alice 1')
+      const topicAlice2 = await createTopic(alice, idAlice, 'Sujet Alice 2')
+
+      const bob = await signUp('bob@example.com')
+      const idBob = await createDomain(bob, 'Domaine Bob')
+      const topicBob = await createTopic(bob, idBob, 'Sujet Bob')
+
+      // Ordre d'enfilement réel : Alice#1, Bob, Alice#2 — un run d'un autre
+      // domaine intercalé doit décaler la position d'Alice#2 dans SA propre
+      // file (2 devient 3), preuve que la position n'est pas un simple rang
+      // local aux runs renvoyés.
+      await h.gql(GENERATE_ARTICLE, { domainId: idAlice, topicId: topicAlice1 }, alice)
+      await h.gql(GENERATE_ARTICLE, { domainId: idBob, topicId: topicBob }, bob)
+      await h.gql(GENERATE_ARTICLE, { domainId: idAlice, topicId: topicAlice2 }, alice)
+
+      const aliceQueue = (await h.gql(PIPELINE_QUEUE_QUERY, { domainId: idAlice }, alice)).body.data.pipelineQueue
+      expect(aliceQueue).toHaveLength(2)
+      expect(aliceQueue.map((q: { position: number }) => q.position)).toEqual([1, 3])
+
+      await queue.pumpAll()
+    })
+
+    it('pipelineQueue : avec un historique suffisant (>= 5 échantillons), l’estimation devient un nombre positif', async () => {
+      const { cookies, domainId, topicId } = await setup()
+      const durations = [9_000, 9_500, 10_000, 10_500, 11_000] // médiane = 10 000 ms
+      for (const durationMs of durations) {
+        await h.prisma.aIJob.create({
+          data: {
+            type: 'OUTLINE', provider: 'fake', model: 'fake', promptVersion: 'v1', status: 'COMPLETED',
+            input: {}, durationMs, completedAt: new Date(),
+          },
+        })
+      }
+
+      await h.gql(GENERATE_ARTICLE, { domainId, topicId }, cookies)
+      const queueResult = (await h.gql(PIPELINE_QUEUE_QUERY, { domainId }, cookies)).body.data.pipelineQueue
+      // OUTLINE a un historique (médiane 10s) ; DRAFT n'en a aucun -> `null`
+      // pour CE run tant que DRAFT compte encore parmi ses étapes restantes.
+      expect(queueResult[0].estimatedWaitSeconds).toBeNull()
+
+      // Complète l'historique de DRAFT à son tour : l'estimation devient disponible.
+      for (const durationMs of durations) {
+        await h.prisma.aIJob.create({
+          data: {
+            type: 'DRAFT', provider: 'fake', model: 'fake', promptVersion: 'v1', status: 'COMPLETED',
+            input: {}, durationMs, completedAt: new Date(),
+          },
+        })
+      }
+      const secondQueueResult = (await h.gql(PIPELINE_QUEUE_QUERY, { domainId }, cookies)).body.data.pipelineQueue
+      // ~20s attendus (médiane OUTLINE + médiane DRAFT, SEO ignorée car jamais tracée en AIJob).
+      expect(secondQueueResult[0].estimatedWaitSeconds).toBe(20)
+
+      await queue.pumpAll()
+    })
+
+    it('pipelineQueue : la médiane ignore une durée aberrante bien mieux qu’une moyenne l’aurait fait', async () => {
+      const { cookies, domainId, topicId } = await setup()
+      // Quatre durées cohérentes autour de 10s, UNE durée aberrante à 600s (10 min) :
+      // médiane = 10 000ms (le point du milieu, insensible à l'aberrante) ;
+      // une moyenne, elle, serait tirée à (4×10 000 + 600 000) / 5 = 128 000ms.
+      const durations = [9_800, 10_000, 10_200, 9_900, 600_000]
+      for (const durationMs of durations) {
+        await h.prisma.aIJob.create({
+          data: {
+            type: 'OUTLINE', provider: 'fake', model: 'fake', promptVersion: 'v1', status: 'COMPLETED',
+            input: {}, durationMs, completedAt: new Date(),
+          },
+        })
+        await h.prisma.aIJob.create({
+          data: {
+            type: 'DRAFT', provider: 'fake', model: 'fake', promptVersion: 'v1', status: 'COMPLETED',
+            input: {}, durationMs: 10_000, completedAt: new Date(),
+          },
+        })
+      }
+
+      await h.gql(GENERATE_ARTICLE, { domainId, topicId }, cookies)
+      const queueResult = (await h.gql(PIPELINE_QUEUE_QUERY, { domainId }, cookies)).body.data.pipelineQueue
+      // 10s (médiane OUTLINE) + 10s (médiane DRAFT) = 20s, très loin des ~138s
+      // qu'une moyenne aurait produits pour la seule étape OUTLINE.
+      expect(queueResult[0].estimatedWaitSeconds).toBe(20)
+
+      await queue.pumpAll()
+    })
+
+    it('aiJobs liste les appels IA du domaine et filtre par statut/type', async () => {
+      const { cookies, domainId, topicId } = await setup()
+      await h.gql(GENERATE_ARTICLE, { domainId, topicId }, cookies)
+      await queue.pumpAll()
+
+      const all = (await h.gql(AI_JOBS, { domainId }, cookies)).body.data.aiJobs
+      expect(all.totalCount).toBe(2) // OUTLINE + DRAFT (SEO ne crée aucun AIJob)
+
+      const outlineOnly = (await h.gql(AI_JOBS, { domainId, filter: { type: 'OUTLINE' } }, cookies)).body.data.aiJobs
+      expect(outlineOnly.totalCount).toBe(1)
+      expect(outlineOnly.items[0].type).toBe('OUTLINE')
+    })
+
+    it("isole aiJobs par domaine : un non-membre ne voit rien, un membre d'un autre domaine ne voit pas les AIJob d'un autre", async () => {
+      const alice = await signUp('alice@example.com')
+      const idAlice = await createDomain(alice, 'Domaine Alice')
+      const topicAlice = await createTopic(alice, idAlice)
+      await h.gql(GENERATE_ARTICLE, { domainId: idAlice, topicId: topicAlice }, alice)
+      await queue.pumpAll()
+
+      const bob = await signUp('bob@example.com')
+      const idBob = await createDomain(bob, 'Domaine Bob')
+
+      const res = await h.gql(AI_JOBS, { domainId: idBob }, bob)
+      expect(res.body.data.aiJobs.totalCount).toBe(0)
     })
   })
 })

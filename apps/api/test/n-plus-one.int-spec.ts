@@ -187,4 +187,42 @@ describe('anti-N+1 : DataLoader sur les champs imbriqués d’Article', () => {
       expect(second.body.data.article.author.name).toBe('Nom modifié')
     })
   })
+
+  describe('PipelineRun.steps (Task 6)', () => {
+    const GENERATE_TOPICS = `
+      mutation ($domainId: ID!, $input: GenerateTopicsInput!) { generateTopics(domainId: $domainId, input: $input) { id } }`
+    const PIPELINE_RUNS = `
+      query ($domainId: ID!) {
+        pipelineRuns(domainId: $domainId, page: { limit: 20, offset: 0 }) {
+          items { id status steps { id type status } }
+          totalCount
+        }
+      }`
+
+    it('liste 20 runs avec leurs étapes en un nombre borné de requêtes (pas une par run)', async () => {
+      const alice = await signUp('alice@example.com')
+      const domainId = await createDomain(alice.cookies)
+
+      for (let i = 0; i < 20; i++) {
+        const res = await h.gql(GENERATE_TOPICS, { domainId, input: { count: 1 } }, alice.cookies)
+        if (res.body.errors) throw new Error(`generateTopics failed: ${JSON.stringify(res.body.errors)}`)
+      }
+
+      const before = queryCount
+      const res = await h.gql(PIPELINE_RUNS, { domainId }, alice.cookies)
+      const emitted = queryCount - before
+
+      expect(res.body.errors).toBeUndefined()
+      expect(res.body.data.pipelineRuns.items).toHaveLength(20)
+      for (const run of res.body.data.pipelineRuns.items as Array<{ steps: unknown[] }>) {
+        expect(run.steps.length).toBeGreaterThan(0)
+      }
+
+      // Même motif que le test `articles` ci-dessus : une borne haute, pas un
+      // nombre exact. Sans `stepsByRunId` (DataLoader), chaque run listé
+      // ajouterait une requête `PipelineStep` séparée — 20 requêtes
+      // supplémentaires pour 20 runs, jamais une seule requête batchée.
+      expect(emitted).toBeLessThanOrEqual(12)
+    })
+  })
 })

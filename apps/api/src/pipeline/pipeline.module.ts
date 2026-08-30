@@ -6,7 +6,7 @@ import { SeoModule } from '../seo/seo.module'
 import { OutlineStepHandler } from './handlers/outline.handler'
 import { DraftStepHandler } from './handlers/draft.handler'
 import { PipelineService } from './pipeline.service'
-import { PipelineResolver } from './pipeline.resolver'
+import { PipelineResolver, PipelineStepResolver } from './pipeline.resolver'
 import { BullPipelineQueue, InlinePipelineQueue, PIPELINE_QUEUE, PIPELINE_QUEUE_NAME } from './pipeline-queue'
 import type { PipelineJobData } from './pipeline-queue'
 
@@ -81,7 +81,7 @@ const queueProvider: Provider =
 
 @Module({
   imports: [AiModule, ArticlesModule, SeoModule, ...queueImports],
-  providers: [PipelineService, OutlineStepHandler, DraftStepHandler, queueProvider, PipelineResolver],
+  providers: [PipelineService, OutlineStepHandler, DraftStepHandler, queueProvider, PipelineResolver, PipelineStepResolver],
   // `PipelineService` (utilisé par `worker.ts`, hors de cet `AppModule`) et
   // `PIPELINE_QUEUE` (la file BullMQ enregistrée ci-dessus, dont
   // `PipelineProcessor` a besoin — voir sa jsdoc sur la découverte globale de

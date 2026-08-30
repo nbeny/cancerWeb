@@ -1,6 +1,6 @@
 import DataLoader from 'dataloader'
 import { Prisma } from '@prisma/client'
-import type { Category, Domain, DomainRole, Tag, User } from '@prisma/client'
+import type { AIJob, Article, Category, Domain, DomainRole, PipelineStep, Tag, Topic, User } from '@prisma/client'
 import type { PrismaService } from '../../prisma/prisma.service'
 
 export interface Loaders {
@@ -11,6 +11,10 @@ export interface Loaders {
   childrenByParentId: DataLoader<string, Category[]>
   articleCountByCategoryId: DataLoader<string, number>
   myRoleByDomain: DataLoader<string, DomainRole | null>
+  articleById: DataLoader<string, Article | null>
+  topicById: DataLoader<string, Topic | null>
+  stepsByRunId: DataLoader<string, PipelineStep[]>
+  jobsByStepId: DataLoader<string, AIJob[]>
 }
 
 /**
@@ -113,6 +117,48 @@ export function createLoaders(prisma: PrismaService): Loaders {
       })
       const byKey = new Map(rows.map((row) => [`${row.userId}:${row.domainId}`, row.role]))
       return keys.map((key) => byKey.get(key) ?? null)
+    }),
+
+    // `PipelineRun.article`/`PipelineRun.topic` (Task 6) : même motif que
+    // `domainById`/`categoryById` — un batch par relation plutôt qu'un
+    // `findUnique` par run listé (`pipelineRuns`, `pipelineQueue`).
+    articleById: new DataLoader<string, Article | null>(async (ids) => {
+      const rows = await prisma.article.findMany({ where: { id: { in: [...ids] } } })
+      const byId = new Map(rows.map((row) => [row.id, row]))
+      return ids.map((id) => byId.get(id) ?? null)
+    }),
+
+    topicById: new DataLoader<string, Topic | null>(async (ids) => {
+      const rows = await prisma.topic.findMany({ where: { id: { in: [...ids] } } })
+      const byId = new Map(rows.map((row) => [row.id, row]))
+      return ids.map((id) => byId.get(id) ?? null)
+    }),
+
+    // `PipelineRun.steps` (Task 6) : lister N runs avec leurs étapes ne doit
+    // coûter qu'UNE requête batchée (`runId IN (...)`), pas une par run —
+    // voir `n-plus-one.int-spec.ts`, cas "pipelineRuns". Trié par `order`
+    // pour ne jamais dépendre de l'ordre de retour de la base.
+    stepsByRunId: new DataLoader<string, PipelineStep[]>(async (runIds) => {
+      const rows = await prisma.pipelineStep.findMany({
+        where: { runId: { in: [...runIds] } },
+        orderBy: { order: 'asc' },
+      })
+      const byRun = new Map<string, PipelineStep[]>(runIds.map((id) => [id, []]))
+      for (const row of rows) byRun.get(row.runId)?.push(row)
+      return runIds.map((id) => byRun.get(id) ?? [])
+    }),
+
+    // `PipelineStep.jobs` (Task 6) : même motif, batché par `stepId`.
+    jobsByStepId: new DataLoader<string, AIJob[]>(async (stepIds) => {
+      const rows = await prisma.aIJob.findMany({
+        where: { stepId: { in: [...stepIds] } },
+        orderBy: { createdAt: 'asc' },
+      })
+      const byStep = new Map<string, AIJob[]>(stepIds.map((id) => [id, []]))
+      for (const row of rows) {
+        if (row.stepId) byStep.get(row.stepId)?.push(row)
+      }
+      return stepIds.map((id) => byStep.get(id) ?? [])
     }),
   }
 }

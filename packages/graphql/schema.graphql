@@ -2,6 +2,32 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
 # ------------------------------------------------------
 
+type AIJob {
+  completedAt: DateTime
+  correlationId: String
+  createdAt: DateTime!
+  durationMs: Int
+  error: String
+  id: ID!
+  model: String!
+  promptVersion: String!
+  provider: String!
+  startedAt: DateTime
+  status: JobStatus!
+  stepId: ID
+  type: String!
+}
+
+type AIJobConnection {
+  items: [AIJob!]!
+  totalCount: Int!
+}
+
+input AIJobFilter {
+  status: JobStatus
+  type: String
+}
+
 type Article {
   author: User!
   authorId: ID!
@@ -192,6 +218,10 @@ enum ExpertiseLevel {
   INTERMEDIATE
 }
 
+input GenerateTopicsInput {
+  count: Int!
+}
+
 enum GlobalRole {
   ADMIN
   USER
@@ -199,6 +229,14 @@ enum GlobalRole {
 
 """Valeur JSON arbitraire, sans schéma fixe."""
 scalar JSON
+
+enum JobStatus {
+  CANCELLED
+  COMPLETED
+  FAILED
+  PENDING
+  RUNNING
+}
 
 input LoginInput {
   email: String!
@@ -222,11 +260,12 @@ type Mutation {
   deleteTag(domainId: ID!, id: ID!): Boolean!
   deleteTopic(domainId: ID!, id: ID!): Boolean!
   generateArticle(domainId: ID!, topicId: ID!): PipelineRun!
+  generateTopics(domainId: ID!, input: GenerateTopicsInput!): PipelineRun!
   login(input: LoginInput!): AuthPayload!
   logout: Boolean!
   publishArticle(domainId: ID!, id: ID!): Article!
   refresh: AuthPayload!
-  regeneratePipelineStep(domainId: ID!, runId: ID!, stepType: StepType!): PipelineRun!
+  regenerateStep(domainId: ID!, runId: ID!, step: StepType!): PipelineRun!
   register(input: RegisterInput!): AuthPayload!
   rejectArticle(domainId: ID!, id: ID!): Article!
   rejectTopic(domainId: ID!, id: ID!): Topic!
@@ -248,6 +287,7 @@ input PageInput {
 }
 
 type PipelineRun {
+  article: Article
   articleId: ID
   completedAt: DateTime
   createdAt: DateTime!
@@ -257,8 +297,18 @@ type PipelineRun {
   startedAt: DateTime
   status: RunStatus!
   steps: [PipelineStep!]!
+  topic: Topic
   topicId: ID
   triggeredBy: ID
+}
+
+type PipelineRunConnection {
+  items: [PipelineRun!]!
+  totalCount: Int!
+}
+
+input PipelineRunFilter {
+  status: RunStatus
 }
 
 type PipelineStep {
@@ -267,6 +317,7 @@ type PipelineStep {
   error: String
   heartbeatAt: DateTime
   id: ID!
+  jobs: [AIJob!]!
   order: Int!
   runId: ID!
   startedAt: DateTime
@@ -275,6 +326,7 @@ type PipelineStep {
 }
 
 type Query {
+  aiJobs(domainId: ID!, filter: AIJobFilter, page: PageInput): AIJobConnection!
   article(domainId: ID!, id: ID!): Article!
   articleVersions(articleId: ID!, domainId: ID!): [ArticleVersion!]!
   articles(domainId: ID!, filter: ArticleFilter, page: PageInput, sort: ArticleSort): ArticleConnection!
@@ -283,7 +335,9 @@ type Query {
   domain(id: ID!): Domain!
   domains(page: PageInput): DomainConnection!
   me: User!
+  pipelineQueue(domainId: ID!): [QueuedRun!]!
   pipelineRun(domainId: ID!, id: ID!): PipelineRun!
+  pipelineRuns(domainId: ID!, filter: PipelineRunFilter, page: PageInput): PipelineRunConnection!
   seoReports(articleId: ID!, domainId: ID!, page: PageInput): SeoReportConnection!
 
   """Horodatage serveur — sonde de disponibilité."""
@@ -291,6 +345,12 @@ type Query {
   tags(domainId: ID!): [Tag!]!
   topic(domainId: ID!, id: ID!): Topic!
   topics(domainId: ID!, page: PageInput, status: TopicStatus): TopicConnection!
+}
+
+type QueuedRun {
+  estimatedWaitSeconds: Int
+  position: Int!
+  run: PipelineRun!
 }
 
 input RegisterInput {
@@ -361,6 +421,7 @@ enum StepType {
   RESEARCH
   REVIEW
   SEO
+  TOPIC_GENERATION
 }
 
 type Tag {
