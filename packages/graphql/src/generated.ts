@@ -7,8 +7,27 @@ import { GraphQLError, print } from 'graphql'
 import gql from 'graphql-tag';
 type GraphQLClientRequestHeaders = RequestOptions['requestHeaders'];
 export type ArticleFilter = {
+  authorId?: string | number | null | undefined;
+  categoryId?: string | number | null | undefined;
+  minSeoScore?: number | null | undefined;
+  publishedAfter?: string | null | undefined;
+  publishedBefore?: string | null | undefined;
   search?: string | null | undefined;
+  status?: Array<ArticleStatus> | null | undefined;
+  tagIds?: Array<string | number> | null | undefined;
 };
+
+export type ArticleSort = {
+  direction: SortDirection;
+  field: ArticleSortField;
+};
+
+export type ArticleSortField =
+  | 'CREATED_AT'
+  | 'PUBLISHED_AT'
+  | 'SEO_SCORE'
+  | 'TITLE'
+  | 'UPDATED_AT';
 
 export type ArticleStatus =
   | 'APPROVED'
@@ -88,6 +107,10 @@ export type SearchIntent =
   | 'NAVIGATIONAL'
   | 'TRANSACTIONAL';
 
+export type SortDirection =
+  | 'ASC'
+  | 'DESC';
+
 export type Tone =
   | 'ACCESSIBLE'
   | 'EDUCATIONAL'
@@ -133,6 +156,7 @@ export type ArticleListFieldsFragment = { id: string, title: string, slug: strin
 export type ArticlesQueryVariables = Exact<{
   domainId: string | number;
   filter?: ArticleFilter | null | undefined;
+  sort?: ArticleSort | null | undefined;
   page?: PageInput | null | undefined;
 }>;
 
@@ -339,8 +363,8 @@ export const TopicFieldsFragmentDoc = gql`
 }
     `;
 export const ArticlesDocument = gql`
-    query Articles($domainId: ID!, $filter: ArticleFilter, $page: PageInput) {
-  articles(domainId: $domainId, filter: $filter, page: $page) {
+    query Articles($domainId: ID!, $filter: ArticleFilter, $sort: ArticleSort, $page: PageInput) {
+  articles(domainId: $domainId, filter: $filter, sort: $sort, page: $page) {
     items {
       ...ArticleListFields
     }

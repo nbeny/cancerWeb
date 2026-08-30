@@ -11,14 +11,15 @@ fragment ArticleListFields on Article {
   category { id name }
 }
 
-# `filter` ne porte que `search` côté API (recherche plein texte sur
-# `Article.searchVector`, voir Task 10) : il n'existe pas de filtre serveur
-# par statut/auteur/catégorie/score, ni de paramètre de tri. La page
-# `/dashboard/articles` complète donc côté client (statut, auteur, catégorie,
-# score minimum, tri) au-dessus du lot renvoyé par cette requête — voir le
-# commentaire dans `articles/page.tsx` pour le détail et ses limites.
-query Articles($domainId: ID!, $filter: ArticleFilter, $page: PageInput) {
-  articles(domainId: $domainId, filter: $filter, page: $page) {
+# Filtrage ET tri ont lieu côté serveur (voir `apps/api/src/articles/article-query.ts`) :
+# `filter` porte désormais status/authorId/categoryId/tagIds/search/minSeoScore/
+# publishedAfter/publishedBefore, et `sort` porte le tri. `totalCount` reflète
+# le filtre appliqué — la pagination `/dashboard/articles` s'appuie dessus,
+# plus sur une taille de lot récupérée côté client (voir Git history pour
+# l'ancienne stratégie à 500 articles, abandonnée : silencieusement fausse
+# au-delà de cette limite).
+query Articles($domainId: ID!, $filter: ArticleFilter, $sort: ArticleSort, $page: PageInput) {
+  articles(domainId: $domainId, filter: $filter, sort: $sort, page: $page) {
     items { ...ArticleListFields }
     totalCount
   }

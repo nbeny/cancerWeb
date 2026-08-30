@@ -7,23 +7,11 @@ import { DomainPicker } from '@/components/dashboard/domain-picker'
 import { DomainSwitcher } from '@/components/dashboard/domain-switcher'
 import { ArticlesFilters } from './articles-filters'
 import { ArticlesTable } from './articles-table'
-import { matchesArticleFilters, paginate, parseArticleFilters, parseArticleSort, sortArticles } from './filters'
+import { hasActiveFilter, parseArticleFilter, parseArticleSort } from './filters'
 
 export const metadata = { title: 'Articles — cancerWeb' }
 
 const PAGE_SIZE = 20
-
-// L'API n'expose qu'un filtre `search` (plein texte) et aucun paramètre de
-// tri sur `articles(...)` (voir le commentaire en tête de
-// `packages/graphql/src/operations/articles.graphql`). On récupère donc un
-// lot large en une requête — suffisant pour le volume attendu en Lot 1 — puis
-// on applique statut/auteur/catégorie/score minimum/tri/pagination côté
-// client dans ce composant serveur (pas de hook, juste des fonctions pures
-// testées dans `filters.test.ts`). Au-delà de cette limite, filtrer devient
-// incomplet : un vrai correctif nécessiterait d'étendre `ArticleFilter` et
-// `articles(...)` côté API (hors périmètre de cette tâche, apps/api n'est pas
-// modifié).
-const FETCH_LIMIT = 500
 
 interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>
@@ -60,33 +48,40 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
     return <DomainPicker domains={domains} basePath="/dashboard/articles" />
   }
 
-  const search = firstParam(params.q)?.trim() || undefined
-  const filters = parseArticleFilters(params)
+  const filter = parseArticleFilter(params)
   const sort = parseArticleSort(firstParam(params.sort))
   const page = Math.max(1, Number(firstParam(params.page)) || 1)
+  const activeFilter = hasActiveFilter(filter)
 
   // Requête indépendante des filtres, pour distinguer « ce domaine n'a aucun
   // article » de « aucun résultat pour ces filtres » : la seconde ne doit pas
   // être confondue avec la première, elles appellent des actions différentes
-  // (créer un article vs. effacer les filtres).
+  // (créer un article vs. effacer les filtres). Filtrage, tri et pagination
+  // ont désormais lieu côté serveur (voir `article-query.ts`) : `data.articles.totalCount`
+  // reflète le filtre appliqué, pas le total du domaine.
   const [{ data: totalData }, { data }, { data: categoriesData }] = await Promise.all([
     sdk.Articles({ domainId, page: { limit: 1, offset: 0 } }),
-    sdk.Articles({ domainId, filter: search ? { search } : undefined, page: { limit: FETCH_LIMIT, offset: 0 } }),
+    sdk.Articles({
+      domainId,
+      filter: activeFilter ? filter : undefined,
+      sort,
+      page: { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
+    }),
     sdk.ArticleCategories({ domainId }),
   ])
 
   const hasAnyArticlesAtAll = totalData.articles.totalCount > 0
-  const fetchedArticles = data.articles.items
-  const filtered = fetchedArticles.filter((article) => matchesArticleFilters(article, filters))
-  const sorted = sortArticles(filtered, sort)
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
-  const safePage = Math.min(page, totalPages)
-  const pageItems = paginate(sorted, safePage, PAGE_SIZE)
+  const pageItems = data.articles.items
 
-  const authors = Array.from(new Map(fetchedArticles.map((article) => [article.author.id, article.author])).values())
+  // Le menu déroulant "Auteur" (voir `articles-filters.tsx`) tire ses options
+  // du lot actuellement affiché — il n'existe aucune query GraphQL listant
+  // les membres d'un domaine (voir la revue de ce correctif) : construire une
+  // liste exhaustive nécessiterait une nouvelle query serveur, hors périmètre
+  // ici. Limite assumée : un auteur absent de la page courante n'apparaît pas
+  // dans le menu, même si le filtrer par son id (ex. lien partagé) fonctionne
+  // toujours correctement côté serveur.
+  const authors = Array.from(new Map(pageItems.map((article) => [article.author.id, article.author])).values())
   const categories = categoriesData.categories
-
-  const hasActiveFilters = Boolean(search || filters.status || filters.authorId || filters.categoryId || filters.minScore != null)
 
   const emptyState = !hasAnyArticlesAtAll ? (
     <EmptyState
@@ -117,14 +112,14 @@ export default async function ArticlesPage({ searchParams }: PageProps) {
         <DomainSwitcher domains={domains} currentDomainId={domainId} basePath="/dashboard/articles" />
       </div>
 
-      {(hasAnyArticlesAtAll || hasActiveFilters) && (
+      {(hasAnyArticlesAtAll || activeFilter) && (
         <ArticlesFilters domainId={domainId} authors={authors} categories={categories} />
       )}
 
       <ArticlesTable
         articles={pageItems}
-        totalCount={sorted.length}
-        page={safePage}
+        totalCount={data.articles.totalCount}
+        page={page}
         pageSize={PAGE_SIZE}
         emptyState={emptyState}
       />

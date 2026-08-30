@@ -1,90 +1,71 @@
-import type { ArticleListFieldsFragment, ArticleStatus } from '@cancerweb/graphql'
+import type { ArticleFilter, ArticleSort, ArticleSortField, ArticleStatus } from '@cancerweb/graphql'
 
-// `ArticleFilter` côté API ne porte que `search` (recherche plein texte sur
-// `Article.searchVector`) : il n'existe pas de filtre serveur par
-// statut/auteur/catégorie/score minimum, ni de paramètre de tri sur
-// `articles(...)` (voir packages/graphql/schema.graphql). Ces fonctions
-// pures appliquent donc ces filtres et ce tri côté client, sur le lot déjà
-// renvoyé par le serveur (voir `page.tsx` pour la stratégie de récupération
-// et ses limites : au-delà d'un certain volume d'articles par domaine, un
-// vrai filtrage serveur deviendrait nécessaire).
-
-export interface ArticleFilters {
-  status?: ArticleStatus
-  authorId?: string
-  categoryId?: string
-  minScore?: number
-}
+// Filtrage ET tri ont lieu côté serveur (voir
+// `apps/api/src/articles/article-query.ts`) : ce fichier ne fait plus que
+// traduire les paramètres d'URL (lus par `page.tsx`/`DataTable`) vers les
+// arguments GraphQL `filter`/`sort` — aucune logique de filtrage, de tri ou
+// de pagination ne vit plus ici. Avant ce correctif, ce fichier appliquait
+// tout ça en JavaScript sur un lot d'au plus 500 articles récupérés du
+// serveur (voir l'historique Git) : silencieusement faux au-delà.
 
 function stringParam(params: Record<string, string | string[] | undefined>, key: string): string | undefined {
   const value = params[key]
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
 
-export function parseArticleFilters(params: Record<string, string | string[] | undefined>): ArticleFilters {
+/**
+ * Construit le `filter` GraphQL à partir des paramètres d'URL. `status` est
+ * un unique statut choisi dans un menu déroulant côté UI, mais `ArticleFilter.status`
+ * est un tableau côté serveur (il accepte plusieurs statuts) : on l'enveloppe
+ * dans un tableau à un élément plutôt que d'exposer une UI multi-sélection
+ * pour l'instant.
+ */
+export function parseArticleFilter(params: Record<string, string | string[] | undefined>): ArticleFilter {
+  const filter: ArticleFilter = {}
+
+  const status = stringParam(params, 'status')
+  if (status) filter.status = [status as ArticleStatus]
+
+  const authorId = stringParam(params, 'author')
+  if (authorId) filter.authorId = authorId
+
+  const categoryId = stringParam(params, 'category')
+  if (categoryId) filter.categoryId = categoryId
+
   const rawMinScore = stringParam(params, 'minScore')
-  const minScore = rawMinScore !== undefined && !Number.isNaN(Number(rawMinScore)) ? Number(rawMinScore) : undefined
-  return {
-    status: stringParam(params, 'status') as ArticleStatus | undefined,
-    authorId: stringParam(params, 'author'),
-    categoryId: stringParam(params, 'category'),
-    minScore,
-  }
+  const minSeoScore = rawMinScore !== undefined && !Number.isNaN(Number(rawMinScore)) ? Number(rawMinScore) : undefined
+  if (minSeoScore != null) filter.minSeoScore = minSeoScore
+
+  const search = stringParam(params, 'q')
+  if (search) filter.search = search
+
+  return filter
 }
 
-export function matchesArticleFilters(article: ArticleListFieldsFragment, filters: ArticleFilters): boolean {
-  if (filters.status && article.status !== filters.status) return false
-  if (filters.authorId && article.author.id !== filters.authorId) return false
-  if (filters.categoryId && article.category?.id !== filters.categoryId) return false
-  if (filters.minScore != null) {
-    // Un article jamais analysé (`latestSeoScore: null`) ne peut pas
-    // satisfaire un score minimum : il n'y a pas de score à comparer, ce
-    // n'est ni un 0 ni une exception au filtre.
-    if (article.latestSeoScore == null || article.latestSeoScore < filters.minScore) return false
-  }
-  return true
+/** `true` si au moins un filtre (recherche incluse) est actif dans `filter`. */
+export function hasActiveFilter(filter: ArticleFilter): boolean {
+  return Object.keys(filter).length > 0
 }
 
-export const ARTICLE_SORT_KEYS = ['title', 'createdAt', 'latestSeoScore'] as const
-export type ArticleSortKey = (typeof ARTICLE_SORT_KEYS)[number]
-
-export interface ParsedArticleSort {
-  key: ArticleSortKey
-  direction: 1 | -1
+// Clés de colonnes `DataTable` (voir `articles-table.tsx`) triables, mappées
+// vers `ArticleSortField` côté serveur. Seules les colonnes marquées
+// `sortable: true` dans `articles-table.tsx` doivent apparaître ici.
+const SORT_FIELD_BY_COLUMN: Record<string, ArticleSortField> = {
+  title: 'TITLE',
+  latestSeoScore: 'SEO_SCORE',
+  createdAt: 'CREATED_AT',
 }
 
-const DEFAULT_SORT: ParsedArticleSort = { key: 'createdAt', direction: -1 }
-
-export function parseArticleSort(raw: string | undefined): ParsedArticleSort {
-  if (!raw) return DEFAULT_SORT
-  const direction: 1 | -1 = raw.startsWith('-') ? -1 : 1
+/**
+ * Traduit le paramètre d'URL `sort` porté par `DataTable` (`key` ou `-key`,
+ * voir `components/ui/data-table.tsx`) en `ArticleSort` GraphQL. `undefined`
+ * (pas de tri demandé, ou colonne inconnue) laisse le serveur appliquer son
+ * tri par défaut (`createdAt` décroissant, voir `article-query.ts`).
+ */
+export function parseArticleSort(raw: string | undefined): ArticleSort | undefined {
+  if (!raw) return undefined
+  const direction = raw.startsWith('-') ? 'DESC' : 'ASC'
   const key = raw.replace(/^-/, '')
-  return (ARTICLE_SORT_KEYS as readonly string[]).includes(key)
-    ? { key: key as ArticleSortKey, direction }
-    : DEFAULT_SORT
-}
-
-export function sortArticles(
-  articles: ArticleListFieldsFragment[],
-  sort: ParsedArticleSort,
-): ArticleListFieldsFragment[] {
-  const { key, direction } = sort
-  return [...articles].sort((a, b) => {
-    if (key === 'title') return direction * a.title.localeCompare(b.title, 'fr')
-    if (key === 'latestSeoScore') {
-      // Les scores non calculés sont toujours relégués en fin de liste, quel
-      // que soit le sens du tri : un article "jamais analysé" n'est ni
-      // meilleur ni pire qu'un score numérique, il est hors classement.
-      if (a.latestSeoScore == null && b.latestSeoScore == null) return 0
-      if (a.latestSeoScore == null) return 1
-      if (b.latestSeoScore == null) return -1
-      return direction * (a.latestSeoScore - b.latestSeoScore)
-    }
-    return direction * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  })
-}
-
-export function paginate<T>(items: T[], page: number, pageSize: number): T[] {
-  const start = (page - 1) * pageSize
-  return items.slice(start, start + pageSize)
+  const field = SORT_FIELD_BY_COLUMN[key]
+  return field ? { field, direction } : undefined
 }
