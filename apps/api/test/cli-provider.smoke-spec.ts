@@ -10,7 +10,7 @@
  *
  * LANCEMENT MANUEL — depuis `apps/api` :
  *
- *   npx jest --config "{\"preset\":\"ts-jest\",\"testEnvironment\":\"node\",\"rootDir\":\".\",\"testMatch\":[\"<rootDir>/test/cli-provider.smoke-spec.ts\"],\"testTimeout\":120000}"
+ *   npx jest --config "{\"preset\":\"ts-jest\",\"testEnvironment\":\"node\",\"rootDir\":\".\",\"testMatch\":[\"<rootDir>/test/cli-provider.smoke-spec.ts\"],\"testTimeout\":340000}"
  *
  * Prérequis : `opencode` installé et accessible (`opencode --version`).
  * Aucune authentification n'est nécessaire pour les modèles `opencode/*-free`
@@ -33,16 +33,27 @@
  *    Windows, et seulement pour ce test manuel : en conteneur/CI Linux, la
  *    configuration standard de `.env` (`AI_CLI_COMMAND=opencode`) suffit.
  *
- * 2. Le vrai `opencode` NE SE TERMINE JAMAIS de lui-même après avoir écrit
+ * 2. Le vrai `opencode` NE SE TERMINE JAMAIS DE LUI-MÊME après avoir écrit
  *    `output.md` (observé : toujours vivant après 25 s d'observation passive
- *    une fois "Wrote file successfully" affiché). `CliAgentProvider` doit
- *    donc systématiquement attendre `AI_CLI_TIMEOUT_MS`, tuer l'arbre, PUIS
- *    constater que `output.md` existe malgré tout et traiter ça comme un
- *    succès — sans quoi chaque appel réel échouerait. C'est exactement ce
- *    que couvre le test ci-dessous, avec un timeout court (le job réel
- *    prend quelques secondes ; le timeout est volontairement fixé à une
- *    valeur qu'on sait dépasser dans ce test, pour exercer ce chemin précis
- *    et pas la sortie naturelle du process, qui ne viendra pas).
+ *    une fois "Wrote file successfully" affiché). Une première version de
+ *    `CliAgentProvider` attendait donc systématiquement `AI_CLI_TIMEOUT_MS`
+ *    en entier avant de constater que le fichier existait — soit 5 minutes
+ *    PAR APPEL en configuration réelle, quel que soit le temps de travail
+ *    réel de l'agent (quelques secondes à quelques dizaines de secondes).
+ *    `CliAgentProvider` surveille désormais l'apparition de `output.md` et
+ *    sa stabilité (taille inchangée sur deux relevés espacés de
+ *    `AI_CLI_POLL_INTERVAL_MS`) pendant l'attente, et rend la main dès que
+ *    détectée, sans attendre le timeout — qui redevient un pur filet de
+ *    sécurité. Ce test tourne avec `AI_CLI_TIMEOUT_MS=300000` (valeur de
+ *    production) et mesure la durée réelle : elle doit rester de l'ordre de
+ *    quelques dizaines de secondes, pas de 5 minutes.
+ *
+ * 3. `opencode` (compilé avec Bun) résout son répertoire de travail via la
+ *    variable d'environnement `PWD` héritée du process parent, pas via le
+ *    `cwd` réel passé à `spawn()`. Sans correctif, chaque job écrivait son
+ *    résultat hors de son répertoire isolé (constaté : dans le `PWD` hérité
+ *    d'un shell ancêtre sans rapport). `CliAgentProvider` fixe désormais
+ *    `PWD` sur le répertoire du job à chaque spawn.
  */
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
@@ -104,21 +115,34 @@ describe('CliAgentProvider — test de fumée réel (opencode)', () => {
     rmSync(workspaceDir, { recursive: true, force: true })
   })
 
-  it('génère un paragraphe Markdown via le vrai CLI, sans jamais recevoir le prompt en argument', async () => {
-    // Timeout court et volontaire : le vrai opencode ne se termine jamais de
-    // lui-même (voir note en tête de fichier). On exerce donc explicitement
-    // le chemin « tué au timeout, mais output.md existe quand même » plutôt
-    // que d'attendre une sortie naturelle qui ne viendra pas.
-    process.env.AI_CLI_TIMEOUT_MS = '90000'
+  it(
+    'génère un paragraphe Markdown via le vrai CLI, sans jamais recevoir le prompt en argument, ' +
+      'et rend la main bien avant AI_CLI_TIMEOUT_MS (valeur de production)',
+    async () => {
+      // Valeur de PRODUCTION, pas une valeur réduite pour le test : c'est la
+      // mesure de durée ci-dessous qui doit prouver que la surveillance de
+      // output.md évite d'attendre les 5 minutes en entier, pas un timeout
+      // artificiellement bas qui masquerait le problème (voir note 2).
+      process.env.AI_CLI_TIMEOUT_MS = '300000'
 
-    const provider = new CliAgentProvider()
-    const result = await provider.complete({
-      prompt: 'Écris un court paragraphe en Markdown sur le Zero Trust (3-4 phrases suffisent).',
-    })
+      const provider = new CliAgentProvider()
+      const start = Date.now()
+      const result = await provider.complete({
+        prompt: 'Écris un court paragraphe en Markdown sur le Zero Trust (3-4 phrases suffisent).',
+      })
+      const elapsedMs = Date.now() - start
+      console.log(`[smoke] durée réelle de complete() : ${elapsedMs} ms (timeout configuré : 300000 ms)`)
 
-    expect(result.text.trim().length).toBeGreaterThan(0)
-    expect(result.text.toLowerCase()).toContain('zero trust')
-    // Le workspace du job a été nettoyé (succès malgré le kill au timeout).
-    expect(existsSync(workspaceDir)).toBe(true)
-  }, 120_000)
+      expect(result.text.trim().length).toBeGreaterThan(0)
+      expect(result.text.toLowerCase()).toContain('zero trust')
+      // La preuve du correctif : on rend la main très en-dessous du timeout.
+      // Une régression vers "attendre tout AI_CLI_TIMEOUT_MS" ferait échouer
+      // cette assertion (elapsedMs friserait 300000), pas seulement ralentir
+      // silencieusement le test.
+      expect(elapsedMs).toBeLessThan(60_000)
+      // Le workspace du job a été nettoyé : succès par détection de stabilité.
+      expect(existsSync(workspaceDir)).toBe(true)
+    },
+    320_000,
+  )
 })

@@ -162,30 +162,87 @@ describe('CliAgentProvider', () => {
   })
 
   it(
-    "traite comme un succès un binaire qui a écrit output.md avant d'être tué au timeout " +
-      '(comportement réel observé chez opencode, cf. cli-provider.smoke-spec.ts)',
+    'rend la main bien avant AI_CLI_TIMEOUT_MS quand output.md est stable ' +
+      "(comportement réel observé chez opencode, qui ne se termine jamais de lui-même, cf. cli-provider.smoke-spec.ts) " +
+      '— LE test qui prouve que le timeout redevient un filet de sécurité, pas le mode nominal',
     async () => {
       const script = writeFakeBinary(
         binDir,
         'writes-then-hangs.js',
         `
       const fs = require('fs')
-      fs.writeFileSync('output.md', 'Résultat écrit avant que le process ne reste bloqué.')
+      setTimeout(() => {
+        fs.writeFileSync('output.md', 'Résultat écrit avant que le process ne reste bloqué.')
+      }, 300)
       process.stdin.resume()
       setInterval(() => {}, 1000)
       `,
       )
       process.env.AI_CLI_ARGS = JSON.stringify([script])
-      process.env.AI_CLI_TIMEOUT_MS = '300'
+      // Timeout volontairement très généreux : si la détection de stabilité
+      // ne fonctionnait pas, ce test attendrait 30 s au lieu de <3 s. C'est
+      // la mesure de durée ci-dessous qui prouve la correction, pas le
+      // résultat renvoyé (qu'un ancien design "attends tout le timeout"
+      // aurait aussi fini par produire, juste beaucoup plus lentement).
+      process.env.AI_CLI_TIMEOUT_MS = '30000'
 
       const provider = new CliAgentProvider()
-      const result = await provider.complete({ prompt: 'écrit puis ne se termine jamais' })
+      const start = Date.now()
+      const result = await provider.complete({ prompt: 'écrit après 300 ms puis ne se termine jamais' })
+      const elapsed = Date.now() - start
 
       expect(result.text).toBe('Résultat écrit avant que le process ne reste bloqué.')
+      expect(elapsed).toBeLessThan(3_000)
       // Le répertoire de travail est quand même nettoyé : c'est un succès.
       expect(readdirSync(workspaceDir)).toHaveLength(0)
     },
   )
+
+  it('lit un output.md écrit progressivement en plusieurs fois sans jamais le tronquer', async () => {
+    const script = writeFakeBinary(
+      binDir,
+      'writes-progressively.js',
+      `
+      const fs = require('fs')
+      fs.writeFileSync('output.md', 'A')
+      setTimeout(() => fs.writeFileSync('output.md', 'AB'), 200)
+      setTimeout(() => fs.writeFileSync('output.md', 'ABC'), 400)
+      setTimeout(() => fs.writeFileSync('output.md', 'ABCDEFGHIJ'), 600)
+      // S'arrête de changer après 600 ms, mais ne se termine jamais lui-même :
+      // seule la surveillance de la taille peut détecter la fin du travail.
+      process.stdin.resume()
+      setInterval(() => {}, 1000)
+      `,
+    )
+    process.env.AI_CLI_ARGS = JSON.stringify([script])
+    process.env.AI_CLI_TIMEOUT_MS = '10000'
+
+    const provider = new CliAgentProvider()
+    const result = await provider.complete({ prompt: 'écrit par petits bouts' })
+
+    // Si la surveillance concluait à tort à la stabilité entre deux écritures
+    // (ex. sur 'A' ou 'ABC'), le texte lu serait tronqué. Le contenu final
+    // complet prouve que ce n'est pas le cas.
+    expect(result.text).toBe('ABCDEFGHIJ')
+  })
+
+  it('un binaire qui ne produit jamais de fichier et ne se termine pas échoue au timeout (filet de sécurité)', async () => {
+    const script = writeFakeBinary(
+      binDir,
+      'never-writes-never-exits.js',
+      `
+      process.stdin.resume()
+      setInterval(() => {}, 1000)
+      `,
+    )
+    process.env.AI_CLI_ARGS = JSON.stringify([script])
+    process.env.AI_CLI_TIMEOUT_MS = '400'
+
+    const provider = new CliAgentProvider()
+    await expect(provider.complete({ prompt: 'ne produit jamais rien' })).rejects.toThrow(
+      /délai.*sans produire|timeout/i,
+    )
+  })
 
   it('un code de sortie non nul produit une erreur avec stderr conservé dans raw', async () => {
     const script = writeFakeBinary(
