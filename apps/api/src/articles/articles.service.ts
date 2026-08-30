@@ -8,6 +8,7 @@ import { PageInput } from '../common/dto/page.input'
 import { VersionsService } from './versions.service'
 import { canTransition } from './transitions'
 import { queryArticles } from './article-query'
+import { ARTICLE_CHANGE_NOTE_MAX_LENGTH } from '@cancerweb/validation'
 
 interface RenderedContent {
   renderedHtml: string
@@ -280,6 +281,15 @@ export class ArticlesService {
   /**
    * Instantané à la demande, hors transition. Même règle de propriété que
    * `update()` : un AUTHOR ne peut le faire que sur ses propres articles.
+   *
+   * `changeNote` est un argument GraphQL scalaire brut
+   * (`@Args('changeNote', ...)` dans `articles.resolver.ts`), pas un champ
+   * d'`@InputType()` : le `ValidationPipe` global de Nest ignore les
+   * métatypes primitifs (`String`, `Number`, `Boolean`, ...), même décorés
+   * avec class-validator — décorer le paramètre du resolver n'aurait donc eu
+   * AUCUN effet. C'était le seul argument scalaire libre du lot sans borne,
+   * persistable tel quel par n'importe quel AUTHOR. Bornée ici, contre la
+   * même constante partagée (`packages/validation`) que les autres champs.
    */
   async createVersion(
     userId: string,
@@ -287,6 +297,9 @@ export class ArticlesService {
     articleId: string,
     changeNote?: string,
   ): Promise<ArticleVersion> {
+    if (changeNote !== undefined && changeNote.length > ARTICLE_CHANGE_NOTE_MAX_LENGTH) {
+      throw new BadRequestException(`changeNote ne peut pas dépasser ${ARTICLE_CHANGE_NOTE_MAX_LENGTH} caractères`)
+    }
     const member = await this.requireMember(userId, domainId)
     const article = await this.findForUser(userId, domainId, articleId)
     if (member.role === DomainRole.AUTHOR && article.authorId !== userId) {

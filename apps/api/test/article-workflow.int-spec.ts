@@ -1,6 +1,7 @@
 import { DomainRole } from '@prisma/client'
 import { createHarness, errorCode, Harness } from './app-harness'
 import { VersionsService } from '../src/articles/versions.service'
+import { ARTICLE_CHANGE_NOTE_MAX_LENGTH } from '@cancerweb/validation'
 
 let h: Harness
 beforeAll(async () => { h = await createHarness() })
@@ -320,6 +321,28 @@ describe('workflow éditorial — versions', () => {
 
     const versions = await h.gql(VERSIONS, { domainId, articleId: id }, alice.cookies)
     expect(versions.body.data.articleVersions).toHaveLength(2)
+  })
+
+  it("Correction 6 — createArticleVersion refuse un changeNote plus long que ARTICLE_CHANGE_NOTE_MAX_LENGTH", async () => {
+    const { alice, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
+    const id = await createArticle(alice.cookies, domainId)
+
+    // `changeNote` est un argument GraphQL scalaire brut (pas un champ
+    // d'`@InputType()`) : le ValidationPipe global de Nest ignore les
+    // métatypes primitifs, donc AUCUNE borne de class-validator ne
+    // s'appliquait ici avant la Correction 6 — n'importe quel AUTHOR pouvait
+    // persister une chaîne de taille arbitraire.
+    const tropLong = 'x'.repeat(ARTICLE_CHANGE_NOTE_MAX_LENGTH + 1)
+    const res = await h.gql(CREATE_VERSION, { domainId, articleId: id, changeNote: tropLong }, alice.cookies)
+
+    expect(errorCode(res.body)).toBe('VALIDATION_FAILED')
+    const versions = await h.prisma.articleVersion.findMany({ where: { articleId: id } })
+    expect(versions).toHaveLength(1) // seule v1 (création) : aucune version en trop n'a été persistée
+
+    // À la limite exacte, la requête doit réussir (borne inclusive).
+    const pileALaLimite = 'x'.repeat(ARTICLE_CHANGE_NOTE_MAX_LENGTH)
+    const ok = await h.gql(CREATE_VERSION, { domainId, articleId: id, changeNote: pileALaLimite }, alice.cookies)
+    expect(ok.body.errors).toBeUndefined()
   })
 
   it('restaurer v2 crée v5 avec le contenu de v2, et laisse v2 intacte (numéro toujours croissant)', async () => {
