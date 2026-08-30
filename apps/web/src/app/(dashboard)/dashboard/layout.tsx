@@ -6,6 +6,7 @@ import { graphqlErrorCode } from '@/lib/graphql-error'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { Header } from '@/components/dashboard/header'
 import { Breadcrumbs } from '@/components/dashboard/breadcrumbs'
+import { ToastProvider } from '@/components/ui/toast'
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies()
@@ -29,13 +30,15 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar />
-      <div className="flex flex-1 flex-col">
-        <Header userName={userName} />
-        <Breadcrumbs />
-        <main className="flex-1 px-6 pb-10">{children}</main>
+    <ToastProvider>
+      <div className="flex min-h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex flex-1 flex-col">
+          <Header userName={userName} />
+          <Breadcrumbs />
+          <main className="flex-1 px-6 pb-10">{children}</main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   )
 }
