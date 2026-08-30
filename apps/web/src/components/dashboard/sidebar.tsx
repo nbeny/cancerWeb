@@ -18,7 +18,7 @@ const NAV = [
   { href: '/dashboard/topics', label: 'Idées', icon: Lightbulb, enabled: true, scoped: true },
   { href: '/dashboard/articles', label: 'Articles', icon: FileText, enabled: true, scoped: true },
   { href: '/dashboard/categories', label: 'Catégories', icon: FolderTree, enabled: true, scoped: true },
-  { href: '/dashboard/ai', label: 'Jobs IA', icon: Sparkles, enabled: false, scoped: true },
+  { href: '/dashboard/ai', label: 'Jobs IA', icon: Sparkles, enabled: true, scoped: true },
   { href: '/dashboard/sources', label: 'Sources', icon: Library, enabled: false, scoped: true },
   { href: '/dashboard/settings', label: 'Paramètres', icon: Settings, enabled: false, scoped: false },
 ] as const

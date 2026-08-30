@@ -84,12 +84,26 @@ export function TopicsTable({ domainId, topics, totalCount, page, pageSize, empt
         },
       })
       showToast({ title: 'Article créé, rédaction en cours', variant: 'success' })
-      // `domainId` conservé dans l'URL de la page d'édition (Task 16), comme
-      // partout ailleurs dans le dashboard : sans lui, `/dashboard/articles/[id]`
-      // ne peut pas savoir avec quel domaine interroger `article(domainId, id)`.
       router.push(`/dashboard/articles/${data.createArticle.id}?domainId=${domainId}`)
     } catch {
       showToast({ title: 'Échec de la création de l’article', variant: 'error' })
+      setBusyId(null)
+    }
+  }
+
+  // Alternative à la rédaction manuelle ci-dessus (Task 6/7) : le pipeline
+  // automatisé (`generateArticle`) crée l'article en DRAFT dès le retour de
+  // la mutation, puis enchaîne OUTLINE -> DRAFT -> SEO en arrière-plan.
+  // Redirection vers le SUIVI, pas directement vers l'éditeur — le contenu
+  // n'existe pas encore tant que le pipeline n'a pas tourné.
+  const handleGenerateArticle = async (topic: TopicFieldsFragment) => {
+    setBusyId(topic.id)
+    try {
+      const { data } = await browserSdk.GenerateArticle({ domainId, topicId: topic.id })
+      showToast({ title: 'Génération de l’article lancée', variant: 'success' })
+      router.push(`/dashboard/ai/${data.generateArticle.id}?domainId=${domainId}`)
+    } catch {
+      showToast({ title: 'Échec du lancement de la génération', variant: 'error' })
       setBusyId(null)
     }
   }
@@ -137,8 +151,13 @@ export function TopicsTable({ domainId, topics, totalCount, page, pageSize, empt
             </Button>
           )}
           {topic.status === 'SELECTED' && (
-            <Button variant="primary" onClick={() => handleWriteArticle(topic)} loading={busyId === topic.id}>
+            <Button variant="secondary" onClick={() => handleWriteArticle(topic)} loading={busyId === topic.id}>
               Rédiger l’article
+            </Button>
+          )}
+          {topic.status === 'SELECTED' && (
+            <Button variant="primary" onClick={() => handleGenerateArticle(topic)} loading={busyId === topic.id}>
+              Générer l’article (IA)
             </Button>
           )}
         </div>

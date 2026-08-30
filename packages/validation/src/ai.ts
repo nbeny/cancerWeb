@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 // Bornes partagées pour la génération de sujets par IA (Task 6, Lot 2),
 // consommées par le décorateur class-validator de
 // `apps/api/src/pipeline/pipeline.types.ts` (`GenerateTopicsInput`) — même
@@ -12,3 +14,18 @@
 // `PipelineProcessor`).
 export const GENERATE_TOPICS_COUNT_MIN = 1
 export const GENERATE_TOPICS_COUNT_MAX = 20
+
+// Même motif que `topic.ts` (`optionalScale`) : un <input type="number">
+// enregistré par react-hook-form transite en chaîne, convertie en nombre
+// seulement au moment de l'appel à la mutation
+// (`components/dashboard/generate-topics-form.tsx`).
+export const generateTopicsSchema = z.object({
+  count: z
+    .string()
+    .refine((value) => {
+      const parsed = Number(value)
+      return Number.isInteger(parsed) && parsed >= GENERATE_TOPICS_COUNT_MIN && parsed <= GENERATE_TOPICS_COUNT_MAX
+    }, `Le nombre de sujets doit être un entier entre ${GENERATE_TOPICS_COUNT_MIN} et ${GENERATE_TOPICS_COUNT_MAX}`),
+})
+
+export type GenerateTopicsValues = z.infer<typeof generateTopicsSchema>

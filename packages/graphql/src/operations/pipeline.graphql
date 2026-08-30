@@ -1,0 +1,77 @@
+fragment AIJobFields on AIJob {
+  id
+  type
+  provider
+  model
+  promptVersion
+  status
+  error
+  durationMs
+  correlationId
+  startedAt
+  completedAt
+  createdAt
+}
+
+fragment PipelineStepFields on PipelineStep {
+  id
+  runId
+  type
+  order
+  status
+  attempt
+  error
+  heartbeatAt
+  startedAt
+  completedAt
+  jobs { ...AIJobFields }
+}
+
+fragment PipelineRunFields on PipelineRun {
+  id
+  domainId
+  topicId
+  articleId
+  triggeredBy
+  status
+  currentStep
+  startedAt
+  completedAt
+  createdAt
+  steps { ...PipelineStepFields }
+}
+
+query PipelineRun($domainId: ID!, $id: ID!) {
+  pipelineRun(domainId: $domainId, id: $id) { ...PipelineRunFields }
+}
+
+query PipelineRuns($domainId: ID!, $filter: PipelineRunFilter, $page: PageInput) {
+  pipelineRuns(domainId: $domainId, filter: $filter, page: $page) {
+    items { ...PipelineRunFields }
+    totalCount
+  }
+}
+
+query PipelineQueue($domainId: ID!) {
+  pipelineQueue(domainId: $domainId) {
+    position
+    estimatedWaitSeconds
+    run { ...PipelineRunFields }
+  }
+}
+
+mutation GenerateArticle($domainId: ID!, $topicId: ID!) {
+  generateArticle(domainId: $domainId, topicId: $topicId) { ...PipelineRunFields }
+}
+
+mutation GenerateTopics($domainId: ID!, $input: GenerateTopicsInput!) {
+  generateTopics(domainId: $domainId, input: $input) { ...PipelineRunFields }
+}
+
+mutation CancelPipelineRun($domainId: ID!, $id: ID!) {
+  cancelPipelineRun(domainId: $domainId, id: $id) { ...PipelineRunFields }
+}
+
+mutation RegenerateStep($domainId: ID!, $runId: ID!, $step: StepType!) {
+  regenerateStep(domainId: $domainId, runId: $runId, step: $step) { ...PipelineRunFields }
+}
