@@ -1,0 +1,8 @@
+mutation CreateArticle($domainId: ID!, $input: CreateArticleInput!) {
+  createArticle(domainId: $domainId, input: $input) {
+    id
+    title
+    slug
+    status
+  }
+}

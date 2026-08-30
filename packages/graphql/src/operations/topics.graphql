@@ -1,0 +1,46 @@
+fragment TopicFields on Topic {
+  id
+  domainId
+  title
+  description
+  status
+  estimatedDifficulty
+  estimatedInterest
+  keywords
+  searchIntent
+  suggestedAngle
+  generatedByJobId
+  createdAt
+  updatedAt
+}
+
+query Topics($domainId: ID!, $page: PageInput, $status: TopicStatus) {
+  topics(domainId: $domainId, page: $page, status: $status) {
+    items { ...TopicFields }
+    totalCount
+  }
+}
+
+query TopicById($domainId: ID!, $id: ID!) {
+  topic(domainId: $domainId, id: $id) { ...TopicFields }
+}
+
+mutation CreateTopic($domainId: ID!, $input: CreateTopicInput!) {
+  createTopic(domainId: $domainId, input: $input) { ...TopicFields }
+}
+
+mutation UpdateTopic($domainId: ID!, $id: ID!, $input: UpdateTopicInput!) {
+  updateTopic(domainId: $domainId, id: $id, input: $input) { ...TopicFields }
+}
+
+mutation SelectTopic($domainId: ID!, $id: ID!) {
+  selectTopic(domainId: $domainId, id: $id) { ...TopicFields }
+}
+
+mutation RejectTopic($domainId: ID!, $id: ID!) {
+  rejectTopic(domainId: $domainId, id: $id) { ...TopicFields }
+}
+
+mutation DeleteTopic($domainId: ID!, $id: ID!) {
+  deleteTopic(domainId: $domainId, id: $id)
+}

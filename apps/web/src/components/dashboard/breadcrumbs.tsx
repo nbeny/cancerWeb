@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 const LABELS: Record<string, string> = {
   dashboard: 'Vue d’ensemble',
   domains: 'Domaines',
+  topics: 'Idées',
   new: 'Nouveau',
 }
 

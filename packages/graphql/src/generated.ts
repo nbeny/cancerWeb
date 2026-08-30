@@ -6,6 +6,30 @@ import { GraphQLClient, type RequestOptions } from 'graphql-request';
 import { GraphQLError, print } from 'graphql'
 import gql from 'graphql-tag';
 type GraphQLClientRequestHeaders = RequestOptions['requestHeaders'];
+export type ArticleStatus =
+  | 'APPROVED'
+  | 'ARCHIVED'
+  | 'DRAFT'
+  | 'PUBLISHED'
+  | 'REVIEW'
+  | 'SCHEDULED';
+
+export type CreateArticleInput = {
+  canonicalUrl?: string | null | undefined;
+  categoryId?: string | number | null | undefined;
+  content: string;
+  coverImageUrl?: string | null | undefined;
+  excerpt?: string | null | undefined;
+  focusKeyword?: string | null | undefined;
+  metaDescription?: string | null | undefined;
+  robotsFollow?: boolean;
+  robotsIndex?: boolean;
+  secondaryKeywords?: Array<string>;
+  seoTitle?: string | null | undefined;
+  title: string;
+  topicId?: string | number | null | undefined;
+};
+
 export type CreateDomainInput = {
   aiInstructions?: string | null | undefined;
   country?: string | null | undefined;
@@ -17,6 +41,16 @@ export type CreateDomainInput = {
   name: string;
   targetAudience?: Array<string>;
   tone?: Tone;
+};
+
+export type CreateTopicInput = {
+  description?: string | null | undefined;
+  estimatedDifficulty?: number | null | undefined;
+  estimatedInterest?: number | null | undefined;
+  keywords?: Array<string>;
+  searchIntent?: SearchIntent | null | undefined;
+  suggestedAngle?: string | null | undefined;
+  title: string;
 };
 
 export type ExpertiseLevel =
@@ -44,6 +78,12 @@ export type RegisterInput = {
   password: string;
 };
 
+export type SearchIntent =
+  | 'COMMERCIAL'
+  | 'INFORMATIONAL'
+  | 'NAVIGATIONAL'
+  | 'TRANSACTIONAL';
+
 export type Tone =
   | 'ACCESSIBLE'
   | 'EDUCATIONAL'
@@ -53,9 +93,16 @@ export type Tone =
   | 'PROVOCATIVE'
   | 'TECHNICAL';
 
+export type TopicStatus =
+  | 'CONVERTED'
+  | 'IDEA'
+  | 'REJECTED'
+  | 'SELECTED';
+
 export type UpdateDomainInput = {
   aiInstructions?: string | null | undefined;
   autoPublish?: boolean | null | undefined;
+  country?: string | null | undefined;
   description?: string | null | undefined;
   excludedTopics?: Array<string> | null | undefined;
   expertiseLevel?: ExpertiseLevel | null | undefined;
@@ -66,6 +113,24 @@ export type UpdateDomainInput = {
   targetAudience?: Array<string> | null | undefined;
   tone?: Tone | null | undefined;
 };
+
+export type UpdateTopicInput = {
+  description?: string | null | undefined;
+  estimatedDifficulty?: number | null | undefined;
+  estimatedInterest?: number | null | undefined;
+  keywords?: Array<string> | null | undefined;
+  searchIntent?: SearchIntent | null | undefined;
+  suggestedAngle?: string | null | undefined;
+  title?: string | null | undefined;
+};
+
+export type CreateArticleMutationVariables = Exact<{
+  domainId: string | number;
+  input: CreateArticleInput;
+}>;
+
+
+export type CreateArticleMutation = { createArticle: { id: string, title: string, slug: string, status: ArticleStatus } };
 
 export type LoginMutationVariables = Exact<{
   input: LoginInput;
@@ -134,6 +199,66 @@ export type DeleteDomainMutationVariables = Exact<{
 
 export type DeleteDomainMutation = { deleteDomain: boolean };
 
+export type TopicFieldsFragment = { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string };
+
+export type TopicsQueryVariables = Exact<{
+  domainId: string | number;
+  page?: PageInput | null | undefined;
+  status?: TopicStatus | null | undefined;
+}>;
+
+
+export type TopicsQuery = { topics: { totalCount: number, items: Array<{ id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string }> } };
+
+export type TopicByIdQueryVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type TopicByIdQuery = { topic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+
+export type CreateTopicMutationVariables = Exact<{
+  domainId: string | number;
+  input: CreateTopicInput;
+}>;
+
+
+export type CreateTopicMutation = { createTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+
+export type UpdateTopicMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+  input: UpdateTopicInput;
+}>;
+
+
+export type UpdateTopicMutation = { updateTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+
+export type SelectTopicMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type SelectTopicMutation = { selectTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+
+export type RejectTopicMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type RejectTopicMutation = { rejectTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+
+export type DeleteTopicMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type DeleteTopicMutation = { deleteTopic: boolean };
+
 export const DomainFieldsFragmentDoc = gql`
     fragment DomainFields on Domain {
   id
@@ -152,6 +277,33 @@ export const DomainFieldsFragmentDoc = gql`
   reviewOutline
   createdAt
   updatedAt
+}
+    `;
+export const TopicFieldsFragmentDoc = gql`
+    fragment TopicFields on Topic {
+  id
+  domainId
+  title
+  description
+  status
+  estimatedDifficulty
+  estimatedInterest
+  keywords
+  searchIntent
+  suggestedAngle
+  generatedByJobId
+  createdAt
+  updatedAt
+}
+    `;
+export const CreateArticleDocument = gql`
+    mutation CreateArticle($domainId: ID!, $input: CreateArticleInput!) {
+  createArticle(domainId: $domainId, input: $input) {
+    id
+    title
+    slug
+    status
+  }
 }
     `;
 export const LoginDocument = gql`
@@ -243,11 +395,62 @@ export const DeleteDomainDocument = gql`
   deleteDomain(id: $id)
 }
     `;
+export const TopicsDocument = gql`
+    query Topics($domainId: ID!, $page: PageInput, $status: TopicStatus) {
+  topics(domainId: $domainId, page: $page, status: $status) {
+    items {
+      ...TopicFields
+    }
+    totalCount
+  }
+}
+    ${TopicFieldsFragmentDoc}`;
+export const TopicByIdDocument = gql`
+    query TopicById($domainId: ID!, $id: ID!) {
+  topic(domainId: $domainId, id: $id) {
+    ...TopicFields
+  }
+}
+    ${TopicFieldsFragmentDoc}`;
+export const CreateTopicDocument = gql`
+    mutation CreateTopic($domainId: ID!, $input: CreateTopicInput!) {
+  createTopic(domainId: $domainId, input: $input) {
+    ...TopicFields
+  }
+}
+    ${TopicFieldsFragmentDoc}`;
+export const UpdateTopicDocument = gql`
+    mutation UpdateTopic($domainId: ID!, $id: ID!, $input: UpdateTopicInput!) {
+  updateTopic(domainId: $domainId, id: $id, input: $input) {
+    ...TopicFields
+  }
+}
+    ${TopicFieldsFragmentDoc}`;
+export const SelectTopicDocument = gql`
+    mutation SelectTopic($domainId: ID!, $id: ID!) {
+  selectTopic(domainId: $domainId, id: $id) {
+    ...TopicFields
+  }
+}
+    ${TopicFieldsFragmentDoc}`;
+export const RejectTopicDocument = gql`
+    mutation RejectTopic($domainId: ID!, $id: ID!) {
+  rejectTopic(domainId: $domainId, id: $id) {
+    ...TopicFields
+  }
+}
+    ${TopicFieldsFragmentDoc}`;
+export const DeleteTopicDocument = gql`
+    mutation DeleteTopic($domainId: ID!, $id: ID!) {
+  deleteTopic(domainId: $domainId, id: $id)
+}
+    `;
 
 export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, string>) => Promise<T>, operationName: string, operationType?: string, variables?: any) => Promise<T>;
 
 
 const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) => action();
+const CreateArticleDocumentString = print(CreateArticleDocument);
 const LoginDocumentString = print(LoginDocument);
 const RegisterDocumentString = print(RegisterDocument);
 const RefreshDocumentString = print(RefreshDocument);
@@ -258,8 +461,18 @@ const DomainByIdDocumentString = print(DomainByIdDocument);
 const CreateDomainDocumentString = print(CreateDomainDocument);
 const UpdateDomainDocumentString = print(UpdateDomainDocument);
 const DeleteDomainDocumentString = print(DeleteDomainDocument);
+const TopicsDocumentString = print(TopicsDocument);
+const TopicByIdDocumentString = print(TopicByIdDocument);
+const CreateTopicDocumentString = print(CreateTopicDocument);
+const UpdateTopicDocumentString = print(UpdateTopicDocument);
+const SelectTopicDocumentString = print(SelectTopicDocument);
+const RejectTopicDocumentString = print(RejectTopicDocument);
+const DeleteTopicDocumentString = print(DeleteTopicDocument);
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
+    CreateArticle(variables: CreateArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateArticleMutation>(CreateArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateArticle', 'mutation', variables);
+    },
     Login(variables: LoginMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: LoginMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<LoginMutation>(LoginDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Login', 'mutation', variables);
     },
@@ -289,6 +502,27 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     DeleteDomain(variables: DeleteDomainMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteDomainMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteDomainMutation>(DeleteDomainDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteDomain', 'mutation', variables);
+    },
+    Topics(variables: TopicsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TopicsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<TopicsQuery>(TopicsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'Topics', 'query', variables);
+    },
+    TopicById(variables: TopicByIdQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: TopicByIdQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<TopicByIdQuery>(TopicByIdDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'TopicById', 'query', variables);
+    },
+    CreateTopic(variables: CreateTopicMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CreateTopicMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CreateTopicMutation>(CreateTopicDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTopic', 'mutation', variables);
+    },
+    UpdateTopic(variables: UpdateTopicMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: UpdateTopicMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<UpdateTopicMutation>(UpdateTopicDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateTopic', 'mutation', variables);
+    },
+    SelectTopic(variables: SelectTopicMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: SelectTopicMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<SelectTopicMutation>(SelectTopicDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SelectTopic', 'mutation', variables);
+    },
+    RejectTopic(variables: RejectTopicMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RejectTopicMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RejectTopicMutation>(RejectTopicDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RejectTopic', 'mutation', variables);
+    },
+    DeleteTopic(variables: DeleteTopicMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteTopicMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteTopicMutation>(DeleteTopicDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteTopic', 'mutation', variables);
     }
   };
 }

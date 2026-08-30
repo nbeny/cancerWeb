@@ -10,7 +10,7 @@ import { cn } from '@/lib/cn'
 const NAV = [
   { href: '/dashboard', label: 'Vue d’ensemble', icon: LayoutDashboard, enabled: true },
   { href: '/dashboard/domains', label: 'Domaines', icon: Globe, enabled: true },
-  { href: '/dashboard/topics', label: 'Idées', icon: Lightbulb, enabled: false },
+  { href: '/dashboard/topics', label: 'Idées', icon: Lightbulb, enabled: true },
   { href: '/dashboard/articles', label: 'Articles', icon: FileText, enabled: false },
   { href: '/dashboard/ai', label: 'Jobs IA', icon: Sparkles, enabled: false },
   { href: '/dashboard/sources', label: 'Sources', icon: Library, enabled: false },
