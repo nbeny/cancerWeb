@@ -28,6 +28,19 @@ const REPORTS = `
     }
   }`
 
+const UPDATE_ARTICLE = `
+  mutation ($domainId: ID!, $id: ID!, $input: UpdateArticleInput!) {
+    updateArticle(domainId: $domainId, id: $id, input: $input) { id latestSeoScore }
+  }`
+const RESTORE_VERSION = `
+  mutation ($domainId: ID!, $articleId: ID!, $version: Int!) {
+    restoreArticleVersion(domainId: $domainId, articleId: $articleId, version: $version) { id latestSeoScore }
+  }`
+const ARTICLES_WITH_MIN_SCORE = `
+  query ($domainId: ID!, $minSeoScore: Int!) {
+    articles(domainId: $domainId, filter: { minSeoScore: $minSeoScore }) { items { id } totalCount }
+  }`
+
 async function signUp(email: string): Promise<{ cookies: string[]; userId: string }> {
   const res = await h.gql(REGISTER, { input: { email, password: 'Sup3r-Secret!', name: email.split('@')[0] } })
   return { cookies: res.headers['set-cookie'] as unknown as string[], userId: res.body.data.register.user.id }
@@ -263,6 +276,86 @@ describe('SEO persisté (analyzeSeo / seoReports)', () => {
 
     const reportCount = await h.prisma.seoReport.count({ where: { articleId: articleBob.id } })
     expect(reportCount).toBe(0)
+  })
+
+  describe('Correction 4 — latestSeoScore périmé après modification du contenu', () => {
+    it('updateArticle remet latestSeoScore à null dès que content/seoTitle/metaDescription/focusKeyword change, et le filtre minSeoScore cesse de le retenir', async () => {
+      const alice = await signUp('alice@example.com')
+      const domainId = await createDomain(alice.cookies)
+      const article = await createArticle(alice.cookies, domainId, {
+        seoTitle: 'Un excellent titre SEO bien calibré vraiment',
+        metaDescription:
+          'Une meta description soigneusement calibrée pour respecter la fourchette de longueur recommandée par les moteurs de recherche modernes.',
+        focusKeyword: 'titre',
+      })
+
+      const analyzed = await h.gql(ANALYZE, { domainId, articleId: article.id }, alice.cookies)
+      expect(analyzed.body.errors).toBeUndefined()
+      const score = analyzed.body.data.analyzeSeo.score as number
+
+      // Un article analysé une fois est retenu par le filtre.
+      const before = await h.gql(ARTICLES_WITH_MIN_SCORE, { domainId, minSeoScore: score }, alice.cookies)
+      expect(before.body.data.articles.items.map((i: { id: string }) => i.id)).toContain(article.id)
+
+      // Contenu réduit à presque rien et champs SEO effacés : le score n'a
+      // plus aucun rapport avec la réalité du contenu, mais rien ne l'a
+      // recalculé.
+      const updated = await h.gql(
+        UPDATE_ARTICLE,
+        { domainId, id: article.id, input: { content: 'Deux mots.', seoTitle: null, metaDescription: null } },
+        alice.cookies,
+      )
+      expect(updated.body.errors).toBeUndefined()
+      expect(updated.body.data.updateArticle.latestSeoScore).toBeNull()
+
+      const stored = await h.prisma.article.findUnique({ where: { id: article.id } })
+      expect(stored?.latestSeoScore).toBeNull()
+
+      // Un article jamais analysé (ou périmé) ne doit plus être retenu par
+      // AUCUN `minSeoScore`, y compris 0 : `NULL >= 0` est NULL en SQL, donc
+      // exclu par construction (voir la jsdoc d'`ArticleFilter.minSeoScore`).
+      const after = await h.gql(ARTICLES_WITH_MIN_SCORE, { domainId, minSeoScore: 0 }, alice.cookies)
+      expect(after.body.data.articles.items.map((i: { id: string }) => i.id)).not.toContain(article.id)
+    })
+
+    it("updateArticle NE remet PAS latestSeoScore à null quand seuls des champs sans effet sur l'analyse changent", async () => {
+      const alice = await signUp('alice@example.com')
+      const domainId = await createDomain(alice.cookies)
+      const article = await createArticle(alice.cookies, domainId)
+
+      const analyzed = await h.gql(ANALYZE, { domainId, articleId: article.id }, alice.cookies)
+      const score = analyzed.body.data.analyzeSeo.score as number
+
+      const updated = await h.gql(
+        UPDATE_ARTICLE,
+        { domainId, id: article.id, input: { excerpt: 'Un résumé qui ne change rien à l’analyse SEO.' } },
+        alice.cookies,
+      )
+      expect(updated.body.errors).toBeUndefined()
+      expect(updated.body.data.updateArticle.latestSeoScore).toBe(score)
+    })
+
+    it('restoreArticleVersion remet aussi latestSeoScore à null (le contenu restauré peut être aussi obsolète que celui remplacé)', async () => {
+      const alice = await signUp('alice@example.com')
+      const domainId = await createDomain(alice.cookies)
+      const article = await createArticle(alice.cookies, domainId, { content: 'Contenu v1, court.' })
+
+      await h.gql(
+        UPDATE_ARTICLE,
+        { domainId, id: article.id, input: { content: 'Contenu v2, nettement plus long et différent de v1.' } },
+        alice.cookies,
+      )
+
+      const analyzed = await h.gql(ANALYZE, { domainId, articleId: article.id }, alice.cookies)
+      expect(analyzed.body.data.analyzeSeo.score).not.toBeNull()
+
+      const restored = await h.gql(RESTORE_VERSION, { domainId, articleId: article.id, version: 1 }, alice.cookies)
+      expect(restored.body.errors).toBeUndefined()
+      expect(restored.body.data.restoreArticleVersion.latestSeoScore).toBeNull()
+
+      const stored = await h.prisma.article.findUnique({ where: { id: article.id } })
+      expect(stored?.latestSeoScore).toBeNull()
+    })
   })
 
   describe('enrichissement : validité des liens internes', () => {

@@ -151,6 +151,26 @@ export class ArticlesService {
       data.renderedHtml = renderedHtml
       data.wordCount = wordCount
     }
+    // `latestSeoScore` (Correction 4 de la revue finale du Lot 1) : colonne
+    // FILTRABLE ET TRIABLE (`ArticleFilter.minSeoScore`, `ArticleSort.SEO_SCORE`),
+    // jamais recalculée par `update()` elle-même — seul `SeoService.analyze`
+    // sait la recalculer. La laisser figée après une modification du contenu
+    // ou des champs que l'analyseur consulte (`seoTitle`, `metaDescription`,
+    // `focusKeyword` — voir `SeoService.analyze`, `ctx`) affiche un score
+    // qui ne correspond plus au contenu réel, ET continue de faire remonter
+    // l'article dans un filtre `minSeoScore` qu'il ne satisferait plus. La
+    // remettre à `null` ("Non analysé", déjà géré par `articles-table.tsx`)
+    // est le seul choix sûr : recalculer ici dupliquerait la logique
+    // d'analyse hors de `SeoService`, et une valeur pessimiste inventée
+    // serait tout aussi fausse qu'une valeur périmée.
+    if (
+      input.content !== undefined ||
+      input.seoTitle !== undefined ||
+      input.metaDescription !== undefined ||
+      input.focusKeyword !== undefined
+    ) {
+      data.latestSeoScore = null
+    }
 
     return this.prisma.article.update({ where: { id: articleId }, data })
   }
@@ -306,7 +326,10 @@ export class ArticlesService {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.article.update({
         where: { id: articleId },
-        data: { title: target.title, content: target.content, renderedHtml, wordCount },
+        // `latestSeoScore: null` : même raison que dans `update()`, le
+        // contenu restauré change (c'est le but même de cette méthode) donc
+        // le dernier score analysé ne le décrit plus.
+        data: { title: target.title, content: target.content, renderedHtml, wordCount, latestSeoScore: null },
       })
       const snapshot = await this.versions.snapshot(tx, articleId, userId, updated.title, updated.content, `restore-v${version}`)
       return { ...updated, currentVersion: snapshot.version }
