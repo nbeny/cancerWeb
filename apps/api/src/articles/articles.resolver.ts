@@ -2,7 +2,7 @@ import { Args, ID, Int, Mutation, Parent, Query, ResolveField, Resolver } from '
 import { UseGuards } from '@nestjs/common'
 import { DomainRole, User, Domain } from '@prisma/client'
 import { ArticlesService } from './articles.service'
-import { Article, ArticleConnection, ArticleFilter, ArticleVersion, CreateArticleInput, UpdateArticleInput } from './article.types'
+import { Article, ArticleConnection, ArticleFilter, ArticleSort, ArticleVersion, CreateArticleInput, UpdateArticleInput } from './article.types'
 import { Category } from './category.types'
 import { Tag } from './tag.types'
 import { User as UserGqlType } from '../users/user.type'
@@ -32,9 +32,10 @@ export class ArticlesResolver {
     @CurrentUser() user: User,
     @Args('domainId', { type: () => ID }) domainId: string,
     @Args('filter', { nullable: true }) filter?: ArticleFilter,
+    @Args('sort', { nullable: true }) sort?: ArticleSort,
     @Args('page', { nullable: true }) page?: PageInput,
   ): Promise<ArticleConnection> {
-    return this.articlesService.listForDomain(user.id, domainId, page ?? { limit: 20, offset: 0 }, filter)
+    return this.articlesService.listForDomain(user.id, domainId, page ?? { limit: 20, offset: 0 }, filter, sort)
   }
 
   @Query(() => Article)

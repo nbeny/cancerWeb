@@ -41,7 +41,27 @@ type ArticleConnection {
 }
 
 input ArticleFilter {
+  authorId: ID
+  categoryId: ID
+  minSeoScore: Int
+  publishedAfter: DateTime
+  publishedBefore: DateTime
   search: String
+  status: [ArticleStatus!]
+  tagIds: [ID!]
+}
+
+input ArticleSort {
+  direction: SortDirection!
+  field: ArticleSortField!
+}
+
+enum ArticleSortField {
+  CREATED_AT
+  PUBLISHED_AT
+  SEO_SCORE
+  TITLE
+  UPDATED_AT
 }
 
 enum ArticleStatus {
@@ -219,7 +239,7 @@ input PageInput {
 type Query {
   article(domainId: ID!, id: ID!): Article!
   articleVersions(articleId: ID!, domainId: ID!): [ArticleVersion!]!
-  articles(domainId: ID!, filter: ArticleFilter, page: PageInput): ArticleConnection!
+  articles(domainId: ID!, filter: ArticleFilter, page: PageInput, sort: ArticleSort): ArticleConnection!
   categories(domainId: ID!): [Category!]!
   category(domainId: ID!, id: ID!): Category!
   domain(id: ID!): Domain!
@@ -266,6 +286,11 @@ type SeoReport {
 type SeoReportConnection {
   items: [SeoReport!]!
   totalCount: Int!
+}
+
+enum SortDirection {
+  ASC
+  DESC
 }
 
 type Tag {

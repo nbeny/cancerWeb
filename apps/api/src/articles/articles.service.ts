@@ -3,11 +3,11 @@ import { Article, ArticleStatus, ArticleVersion, DomainMember, DomainRole, Prism
 import { PrismaService } from '../prisma/prisma.service'
 import { slugify } from '../common/slug'
 import { parse, render, countWords } from '../markdown'
-import { ArticleFilter, CreateArticleInput, UpdateArticleInput } from './article.types'
+import { ArticleFilter, ArticleSort, CreateArticleInput, UpdateArticleInput } from './article.types'
 import { PageInput } from '../common/dto/page.input'
 import { VersionsService } from './versions.service'
 import { canTransition } from './transitions'
-import { searchArticles } from './search'
+import { queryArticles } from './article-query'
 
 interface RenderedContent {
   renderedHtml: string
@@ -81,30 +81,19 @@ export class ArticlesService {
 
   /**
    * Ne retourne que les articles du domaine dont l'utilisateur est membre.
-   *
-   * `filter.search` non vide bascule sur la recherche plein texte (Task 10,
-   * `./search.ts`) plutôt que le listing chronologique : ce sont deux
-   * requêtes SQL différentes (l'une triée par date, l'autre par pertinence),
-   * pas la même requête avec une clause `WHERE` en plus.
+   * Filtrage ET tri ont lieu EN BASE, dans une seule requête SQL brute (voir
+   * `./article-query.ts` pour la justification du choix d'une requête unique
+   * plutôt que deux chemins distincts pour `search` et le reste).
    */
   async listForDomain(
     userId: string,
     domainId: string,
     page: PageInput,
     filter?: ArticleFilter,
+    sort?: ArticleSort,
   ): Promise<{ items: Article[]; totalCount: number }> {
     await this.requireMember(userId, domainId)
-
-    if (filter?.search?.trim()) {
-      return searchArticles(this.prisma, userId, domainId, filter.search, page)
-    }
-
-    const where: Prisma.ArticleWhereInput = { domainId }
-    const [items, totalCount] = await this.prisma.$transaction([
-      this.prisma.article.findMany({ where, orderBy: { createdAt: 'desc' }, take: page.limit, skip: page.offset }),
-      this.prisma.article.count({ where }),
-    ])
-    return { items, totalCount }
+    return queryArticles(this.prisma, userId, domainId, filter, sort, page)
   }
 
   async findForUser(userId: string, domainId: string, articleId: string): Promise<Article> {
