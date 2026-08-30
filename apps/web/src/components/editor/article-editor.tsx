@@ -269,7 +269,13 @@ export function ArticleEditor({ domainId, article: initialArticle, categories, a
             <SaveIndicator status={saveStatus} errorMessage={saveErrorMessage} onRetry={saveStatus === 'error' ? () => void doSave() : undefined} />
           </div>
         </div>
-        <TransitionBar domainId={domainId} articleId={article.id} status={article.status} onTransitioned={handleTransitioned} />
+        <TransitionBar
+          domainId={domainId}
+          articleId={article.id}
+          status={article.status}
+          myRole={article.domain.myRole}
+          onTransitioned={handleTransitioned}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2" style={{ height: '65vh' }}>

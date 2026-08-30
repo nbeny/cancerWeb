@@ -110,6 +110,40 @@ describe('anti-N+1 : DataLoader sur les champs imbriqués d’Article', () => {
     expect(emitted).toBeLessThanOrEqual(12)
   })
 
+  describe('Domain.myRole (correctif 2)', () => {
+    const LIST_DOMAINS_WITH_ROLE = `
+      query { domains(page: { limit: 20, offset: 0 }) { items { id myRole } } }`
+
+    it('liste 20 domaines avec myRole en un nombre borné de requêtes (pas une par domaine)', async () => {
+      const alice = await signUp('alice@example.com')
+      for (let i = 0; i < 20; i++) {
+        // Rôles variés pour ne pas masquer un bug qui renverrait toujours le
+        // même rôle par coïncidence (ex. le premier de la liste).
+        const role = i % 2 === 0 ? 'OWNER' : 'EDITOR'
+        const domain = await h.prisma.domain.create({ data: { name: `Domaine ${i}`, slug: `domaine-${i}` } })
+        await h.prisma.domainMember.create({ data: { domainId: domain.id, userId: alice.userId, role } })
+      }
+
+      const before = queryCount
+      const res = await h.gql(LIST_DOMAINS_WITH_ROLE, {}, alice.cookies)
+      const emitted = queryCount - before
+
+      expect(res.body.errors).toBeUndefined()
+      const items = res.body.data.domains.items as Array<{ id: string; myRole: string }>
+      expect(items).toHaveLength(20)
+      expect(items.filter((d) => d.myRole === 'OWNER')).toHaveLength(10)
+      expect(items.filter((d) => d.myRole === 'EDITOR')).toHaveLength(10)
+
+      // Borne haute explicite (même motif que le test ci-dessus) : quelques
+      // requêtes CONSTANTES (authentification, listing paginé transactionnel,
+      // UNE requête batchée pour `myRole`) indépendamment du nombre de
+      // domaines listés. Sans DataLoader, `myRole` ajouterait 20 requêtes
+      // supplémentaires (une par domaine) — l'invariant qui compte est
+      // CONSTANT, pas la valeur exacte de cette borne.
+      expect(emitted).toBeLessThanOrEqual(10)
+    })
+  })
+
   describe('isolation entre requêtes', () => {
     it("les loaders d'une requête ne mettent jamais en cache une donnée resservie à une autre requête/utilisateur", async () => {
       const alice = await signUp('alice@example.com')

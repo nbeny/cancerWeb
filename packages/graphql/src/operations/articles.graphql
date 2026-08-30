@@ -89,6 +89,11 @@ fragment ArticleEditorFields on Article {
   author { id name }
   category { id name }
   tags { id name }
+  # `myRole` (correctif 2) : le rôle de l'utilisateur COURANT sur le domaine
+  # de l'article, connu AVANT tout clic sur la barre de transitions (voir
+  # `apps/web/src/components/editor/transition-bar.tsx`) — plus besoin de
+  # tenter une mutation pour découvrir qu'elle est refusée.
+  domain { id myRole }
 }
 
 fragment ArticleStatusFields on Article {

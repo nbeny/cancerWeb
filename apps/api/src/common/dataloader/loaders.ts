@@ -1,6 +1,6 @@
 import DataLoader from 'dataloader'
 import { Prisma } from '@prisma/client'
-import type { Category, Domain, Tag, User } from '@prisma/client'
+import type { Category, Domain, DomainRole, Tag, User } from '@prisma/client'
 import type { PrismaService } from '../../prisma/prisma.service'
 
 export interface Loaders {
@@ -10,6 +10,7 @@ export interface Loaders {
   tagsByArticleId: DataLoader<string, Tag[]>
   childrenByParentId: DataLoader<string, Category[]>
   articleCountByCategoryId: DataLoader<string, number>
+  myRoleByDomain: DataLoader<string, DomainRole | null>
 }
 
 /**
@@ -88,6 +89,30 @@ export function createLoaders(prisma: PrismaService): Loaders {
         rows.filter((row) => row.categoryId !== null).map((row) => [row.categoryId as string, row._count._all]),
       )
       return categoryIds.map((id) => byCategory.get(id) ?? 0)
+    }),
+
+    // `Domain.myRole` (Task 18, correctif 2) : le rôle de l'UTILISATEUR
+    // COURANT sur un domaine — jamais celui d'un autre. Clé composite
+    // `${userId}:${domainId}`, pas seulement `domainId` : ce loader est déjà
+    // instancié PAR REQUÊTE (voir la jsdoc en tête de fichier), donc toutes
+    // les clés qu'il reçoit portent de toute façon le même utilisateur —
+    // mais encoder l'utilisateur DANS la clé rend cet invariant vérifiable
+    // par construction plutôt que par convention, et évite de faire
+    // connaître l'utilisateur courant à `createLoaders` : le contexte
+    // GraphQL est construit AVANT que `GqlAuthGuard` ne peuple `req.user`
+    // (voir `graphql.module.ts`, `context: ({ req, res }) => ({ ...,
+    // loaders: createLoaders(prisma) })`), donc `req.user` n'existe pas
+    // encore à cet instant.
+    myRoleByDomain: new DataLoader<string, DomainRole | null>(async (keys) => {
+      const pairs = keys.map((key) => {
+        const [userId, domainId] = key.split(':')
+        return { userId, domainId }
+      })
+      const rows = await prisma.domainMember.findMany({
+        where: { OR: pairs.map(({ userId, domainId }) => ({ userId, domainId })) },
+      })
+      const byKey = new Map(rows.map((row) => [`${row.userId}:${row.domainId}`, row.role]))
+      return keys.map((key) => byKey.get(key) ?? null)
     }),
   }
 }

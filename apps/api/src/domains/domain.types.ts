@@ -1,12 +1,16 @@
 import { Field, ID, InputType, ObjectType, registerEnumType } from '@nestjs/graphql'
 import { ArrayMaxSize, IsBoolean, IsEnum, IsIn, IsOptional, IsString, Length, MaxLength, ValidateIf } from 'class-validator'
 import { Transform } from 'class-transformer'
-import { ExpertiseLevel, Tone } from '@prisma/client'
+import { DomainRole, ExpertiseLevel, Tone } from '@prisma/client'
 import { Paginated } from '../common/dto/page.input'
 import { ISO_3166_1_ALPHA_2 } from './iso-3166-1-alpha-2'
 
 registerEnumType(Tone, { name: 'Tone' })
 registerEnumType(ExpertiseLevel, { name: 'ExpertiseLevel' })
+// Utilisé par `Domain.myRole` (voir `domains.resolver.ts`) — jamais déclaré
+// côté GraphQL avant cette tâche (`RequireDomainRole`/`DomainRoleGuard` ne
+// s'en servent qu'en TypeScript pur, jamais exposé en sortie de schéma).
+registerEnumType(DomainRole, { name: 'DomainRole' })
 
 export const SUPPORTED_LANGUAGES = ['fr', 'en'] as const
 

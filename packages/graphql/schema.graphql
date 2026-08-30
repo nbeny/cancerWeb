@@ -165,6 +165,7 @@ type Domain {
   id: ID!
   keywords: [String!]!
   language: String!
+  myRole: DomainRole!
   name: String!
   reviewOutline: Boolean!
   slug: String!
@@ -176,6 +177,13 @@ type Domain {
 type DomainConnection {
   items: [Domain!]!
   totalCount: Int!
+}
+
+enum DomainRole {
+  AUTHOR
+  EDITOR
+  OWNER
+  VIEWER
 }
 
 enum ExpertiseLevel {

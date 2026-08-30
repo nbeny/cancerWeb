@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { ArticleStatus, ArticleStatusFieldsFragment } from '@cancerweb/graphql'
+import type { ArticleStatus, ArticleStatusFieldsFragment, DomainRole } from '@cancerweb/graphql'
 import { browserSdk } from '@/lib/graphql-client'
 import { graphqlErrorCode, graphqlErrorMessage } from '@/lib/graphql-error'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,8 @@ interface Props {
   domainId: string
   articleId: string
   status: ArticleStatus
+  /** Rôle de l'utilisateur COURANT sur le domaine de l'article (`Article.domain.myRole`, correctif 2). */
+  myRole: DomainRole
   onTransitioned: (patch: ArticleStatusFieldsFragment) => void
 }
 
@@ -27,73 +29,87 @@ interface TransitionDef {
   from: ArticleStatus
   action: ActionName
   label: string
+  /** Rôle minimum requis — voir `apps/api/src/articles/transitions.ts` (TRANSITIONS). */
+  minRole: DomainRole
   variant?: 'primary' | 'secondary' | 'danger'
   /** Ouvre un ConfirmDialog avant d'exécuter — pour les actions à effet notable ou irréversible. */
   confirm?: { title: string; description: string }
   needsDate?: boolean
 }
 
+// Hiérarchie des rôles de domaine — DUPLIQUÉE depuis
+// `apps/api/src/common/guards/domain-role.guard.ts` (`RANK`), qui la
+// duplique lui-même depuis `apps/api/src/articles/transitions.ts` avec la
+// même justification : un tableau de 4 entrées, trivialement vérifiable à
+// l'œil à chaque revue, ne justifie pas de faire dépendre `apps/web` de
+// `apps/api` (aucun package partagé n'exporte aujourd'hui la logique
+// métier de l'API — seul le SDK GraphQL généré et `@cancerweb/validation`
+// le sont). Le motif est donc COHÉRENT avec l'existant, pas une exception.
+const RANK: Record<DomainRole, number> = { VIEWER: 0, AUTHOR: 1, EDITOR: 2, OWNER: 3 }
+
 // Reflète EXACTEMENT le diagramme de `apps/api/src/articles/transitions.ts`
-// (TRANSITIONS) : une action absente d'ici pour le statut courant ne peut
-// être vraie pour AUCUN rôle (voir sa jsdoc), donc ne mérite pas de bouton du
-// tout — même désactivé. En revanche, une action présente ici mais refusée
-// par le rôle de l'utilisateur reste affichée, désactivée, avec sa raison
-// (voir le composant plus bas) : c'est la distinction que ce fichier doit
-// respecter.
+// (TRANSITIONS), `minRole` inclus : une action absente d'ici pour le statut
+// courant ne peut être vraie pour AUCUN rôle (voir sa jsdoc), donc ne
+// mérite pas de bouton du tout — même désactivé. En revanche, une action
+// présente ici mais refusée par le rôle de l'utilisateur reste affichée,
+// désactivée, avec sa raison (voir le composant plus bas) : c'est la
+// distinction que ce fichier doit respecter.
 const TRANSITIONS: TransitionDef[] = [
-  { from: 'DRAFT', action: 'submitForReview', label: 'Soumettre pour relecture' },
+  { from: 'DRAFT', action: 'submitForReview', label: 'Soumettre pour relecture', minRole: 'AUTHOR' },
   {
     from: 'REVIEW',
     action: 'rejectArticle',
     label: 'Rejeter (renvoyer en brouillon)',
+    minRole: 'EDITOR',
     variant: 'danger',
     confirm: {
       title: 'Rejeter cet article ?',
       description: 'L’article repasse en brouillon. L’auteur pourra le corriger et le soumettre à nouveau.',
     },
   },
-  { from: 'REVIEW', action: 'approveArticle', label: 'Approuver' },
+  { from: 'REVIEW', action: 'approveArticle', label: 'Approuver', minRole: 'EDITOR' },
   {
     from: 'APPROVED',
     action: 'publishArticle',
     label: 'Publier',
+    minRole: 'EDITOR',
     confirm: { title: 'Publier cet article ?', description: 'Il deviendra visible publiquement immédiatement.' },
   },
-  { from: 'APPROVED', action: 'scheduleArticle', label: 'Programmer la publication', needsDate: true },
+  { from: 'APPROVED', action: 'scheduleArticle', label: 'Programmer la publication', minRole: 'EDITOR', needsDate: true },
   {
     from: 'SCHEDULED',
     action: 'publishArticle',
     label: 'Publier maintenant',
+    minRole: 'EDITOR',
     confirm: { title: 'Publier cet article maintenant ?', description: 'Il deviendra visible publiquement immédiatement, sans attendre la date programmée.' },
   },
   {
     from: 'PUBLISHED',
     action: 'archiveArticle',
     label: 'Archiver',
+    minRole: 'EDITOR',
     variant: 'danger',
     confirm: { title: 'Archiver cet article ?', description: 'Il ne sera plus visible publiquement. Cette action reste réversible par un éditeur.' },
   },
 ]
 
 // ---------------------------------------------------------------------------
-// Rôle de l'utilisateur sur CE domaine : AUCUN champ du schéma GraphQL ne
-// l'expose (`me` ne porte que `globalRole`, un rôle global ADMIN/USER sans
-// rapport avec `DomainRole` par domaine ; il n'existe ni requête `domains`
-// avec rôle, ni requête listant les membres). Voir le rapport de la Task
-// 16-17 pour le signalement complet.
-//
-// Option retenue, la plus simple sans toucher `apps/api/` : tenter la
-// mutation et exploiter la distinction que le backend fait déjà entre
-// « transition inexistante » (jamais atteint ici : `TRANSITIONS` ci-dessus
-// reflète le même diagramme, donc seules des transitions structurellement
-// valides depuis le statut courant sont proposées) et « rôle insuffisant »
-// (`ForbiddenException`, message "Rôle X requis..." — voir
-// `apps/api/src/articles/transitions.ts`). Tant qu'aucune tentative n'a eu
-// lieu, le bouton est actif : on ne peut pas deviner le rôle à l'avance.
-// Après un échec, le bouton bascule en désactivé et affiche le message
-// backend tel quel (déjà rédigé pour un humain) — jamais masqué.
+// Rôle de l'utilisateur sur CE domaine : exposé depuis la Task 18 (correctif
+// 2) par `Article.domain.myRole`, connu AVANT tout clic — voir le rapport
+// de la Task 16-17 pour l'ancien signalement de ce trou, désormais comblé.
+// Chaque bouton est donc désactivé DÈS LE RENDU si `myRole` n'atteint pas
+// `minRole`, avec sa raison en infobulle (`title`) et sous le bouton — plus
+// besoin d'un aller-retour réseau pour le découvrir. La gestion de l'échec
+// `FORBIDDEN` après clic reste en place en défense en profondeur (ex. rôle
+// rétrogradé par un autre utilisateur entre le rendu et le clic), mais n'est
+// plus le mécanisme PRINCIPAL de découverte du droit.
 // ---------------------------------------------------------------------------
-export function TransitionBar({ domainId, articleId, status, onTransitioned }: Props) {
+function roleReason(def: TransitionDef, myRole: DomainRole): string | undefined {
+  if (RANK[myRole] >= RANK[def.minRole]) return undefined
+  return `Rôle ${def.minRole} requis pour cette action (rôle actuel : ${myRole})`
+}
+
+export function TransitionBar({ domainId, articleId, status, myRole, onTransitioned }: Props) {
   const { showToast } = useToast()
   const [busyAction, setBusyAction] = useState<ActionName | null>(null)
   const [forbidden, setForbidden] = useState<Partial<Record<ActionName, string>>>({})
@@ -171,7 +187,12 @@ export function TransitionBar({ domainId, articleId, status, onTransitioned }: P
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap gap-2">
         {available.map((def) => {
-          const reason = forbidden[def.action]
+          // Le rôle (connu avant tout clic) l'emporte comme raison affichée ;
+          // `forbidden[def.action]` ne peut de toute façon plus se produire
+          // pour une raison de rôle (voir `run`, qui ne le peuple qu'après un
+          // clic — désormais impossible sur un bouton déjà désactivé par
+          // `roleReason`), seulement pour un autre motif de refus éventuel.
+          const reason = roleReason(def, myRole) ?? forbidden[def.action]
           return (
             <div key={def.action} className="flex flex-col gap-1">
               <Button
@@ -179,6 +200,7 @@ export function TransitionBar({ domainId, articleId, status, onTransitioned }: P
                 disabled={Boolean(reason)}
                 loading={busyAction === def.action}
                 onClick={() => handleClick(def)}
+                title={reason}
               >
                 {def.label}
               </Button>

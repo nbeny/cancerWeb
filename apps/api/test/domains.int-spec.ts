@@ -112,6 +112,41 @@ describe('domaines', () => {
   // UpdateDomainInput — asymétrie non intentionnelle. Même validation ISO
   // 3166-1 alpha-2 qu'à la création (voir UPDATE_WITH_COUNTRY, qui redemande
   // `country` en sortie).
+  describe('myRole', () => {
+    const DOMAIN_WITH_ROLE = `
+      query ($id: ID!) { domain(id: $id) { id myRole } }`
+
+    it("reflète le rôle de l'utilisateur COURANT, jamais celui d'un autre : deux membres du même domaine, deux rôles différents, obtiennent chacun le leur", async () => {
+      const alice = await signUp('alice@example.com')
+      const bob = await signUp('bob@example.com')
+      const id = await (async () => {
+        const res = await h.gql(CREATE, { input: { name: 'Cybersécurité' } }, alice.cookies)
+        return res.body.data.createDomain.id as string
+      })()
+      await h.prisma.domainMember.create({ data: { domainId: id, userId: bob.userId, role: 'EDITOR' } })
+
+      const asAlice = await h.gql(DOMAIN_WITH_ROLE, { id }, alice.cookies)
+      const asBob = await h.gql(DOMAIN_WITH_ROLE, { id }, bob.cookies)
+
+      expect(asAlice.body.errors).toBeUndefined()
+      expect(asBob.body.errors).toBeUndefined()
+      // Alice a créé le domaine : OWNER (voir « rend son créateur OWNER » plus haut).
+      expect(asAlice.body.data.domain.myRole).toBe('OWNER')
+      expect(asBob.body.data.domain.myRole).toBe('EDITOR')
+    })
+
+    it("un non-membre ne peut pas lire ce champ : il n'accède déjà pas au domaine (NOT_FOUND, avant même d'atteindre myRole)", async () => {
+      const alice = await signUp('alice@example.com')
+      const stranger = await signUp('stranger@example.com')
+      const res = await h.gql(CREATE, { input: { name: 'Cybersécurité' } }, alice.cookies)
+      const id = res.body.data.createDomain.id
+
+      const asStranger = await h.gql(DOMAIN_WITH_ROLE, { id }, stranger.cookies)
+      expect(asStranger.body.data?.domain ?? null).toBeNull()
+      expect(errorCode(asStranger.body)).toBe('NOT_FOUND')
+    })
+  })
+
   describe('country sur updateDomain', () => {
     const UPDATE_WITH_COUNTRY = `
       mutation ($id: ID!, $input: UpdateDomainInput!) {

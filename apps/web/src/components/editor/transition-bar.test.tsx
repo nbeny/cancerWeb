@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
 import { ToastProvider } from '@/components/ui/toast'
 import { browserSdk } from '@/lib/graphql-client'
@@ -15,10 +15,14 @@ vi.mock('@/lib/graphql-client', () => ({
   },
 }))
 
-function renderBar(status: Parameters<typeof TransitionBar>[0]['status'], onTransitioned = vi.fn()) {
+function renderBar(
+  status: Parameters<typeof TransitionBar>[0]['status'],
+  onTransitioned = vi.fn(),
+  myRole: Parameters<typeof TransitionBar>[0]['myRole'] = 'OWNER',
+) {
   return render(
     <ToastProvider>
-      <TransitionBar domainId="d1" articleId="a1" status={status} onTransitioned={onTransitioned} />
+      <TransitionBar domainId="d1" articleId="a1" status={status} myRole={myRole} onTransitioned={onTransitioned} />
     </ToastProvider>,
   )
 }
@@ -52,15 +56,32 @@ describe('TransitionBar', () => {
     ))
   })
 
-  it("affiche le bouton désactivé avec la raison exacte du backend en cas de rôle insuffisant, sans le masquer", async () => {
+  it("désactive le bouton AVANT tout clic quand myRole n'atteint pas le rôle minimum, avec sa raison affichée — sans jamais appeler la mutation", () => {
+    renderBar('REVIEW', vi.fn(), 'AUTHOR')
+    const button = screen.getByRole('button', { name: 'Approuver' })
+    // REVIEW propose aussi « Rejeter », qui exige le même rôle EDITOR : la
+    // raison affichée est donc dupliquée sur la page, `within` restreint la
+    // recherche au groupe du bouton « Approuver ».
+    const group = button.parentElement as HTMLElement
+
+    expect(button.hasAttribute('disabled')).toBe(true)
+    expect(within(group).getByText('Rôle EDITOR requis pour cette action (rôle actuel : AUTHOR)')).toBeDefined()
+
+    fireEvent.click(button)
+    expect(browserSdk.ApproveArticle).not.toHaveBeenCalled()
+  })
+
+  it('avec un rôle suffisant, le bouton reste actif : seul un refus effectif du backend le désactive (défense en profondeur, ex. rôle rétrogradé entre le rendu et le clic)', async () => {
     vi.mocked(browserSdk.ApproveArticle).mockRejectedValue({
       response: {
         errors: [{ message: 'Rôle EDITOR requis pour la transition REVIEW → APPROVED (rôle actuel : AUTHOR)', extensions: { code: 'FORBIDDEN' } }],
       },
     })
 
-    renderBar('REVIEW')
+    renderBar('REVIEW', vi.fn(), 'EDITOR')
     const button = screen.getByRole('button', { name: 'Approuver' })
+    expect(button.hasAttribute('disabled')).toBe(false)
+
     fireEvent.click(button)
 
     await waitFor(() =>

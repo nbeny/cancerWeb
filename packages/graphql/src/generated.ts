@@ -76,6 +76,12 @@ export type CreateTopicInput = {
   title: string;
 };
 
+export type DomainRole =
+  | 'AUTHOR'
+  | 'EDITOR'
+  | 'OWNER'
+  | 'VIEWER';
+
 export type ExpertiseLevel =
   | 'BEGINNER'
   | 'EXPERT'
@@ -200,7 +206,7 @@ export type ArticleTagsQueryVariables = Exact<{
 
 export type ArticleTagsQuery = { tags: Array<{ id: string, name: string, slug: string }> };
 
-export type ArticleEditorFieldsFragment = { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> };
+export type ArticleEditorFieldsFragment = { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } };
 
 export type ArticleStatusFieldsFragment = { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string };
 
@@ -212,7 +218,7 @@ export type ArticleQueryVariables = Exact<{
 }>;
 
 
-export type ArticleQuery = { article: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> } };
+export type ArticleQuery = { article: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
 
 export type UpdateArticleMutationVariables = Exact<{
   domainId: string | number;
@@ -221,7 +227,7 @@ export type UpdateArticleMutationVariables = Exact<{
 }>;
 
 
-export type UpdateArticleMutation = { updateArticle: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> } };
+export type UpdateArticleMutation = { updateArticle: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
 
 export type SetArticleCategoryMutationVariables = Exact<{
   domainId: string | number;
@@ -314,7 +320,7 @@ export type RestoreArticleVersionMutationVariables = Exact<{
 }>;
 
 
-export type RestoreArticleVersionMutation = { restoreArticleVersion: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }> } };
+export type RestoreArticleVersionMutation = { restoreArticleVersion: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
 
 export type LoginMutationVariables = Exact<{
   input: LoginInput;
@@ -519,6 +525,10 @@ export const ArticleEditorFieldsFragmentDoc = gql`
   tags {
     id
     name
+  }
+  domain {
+    id
+    myRole
   }
 }
     `;

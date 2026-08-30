@@ -57,6 +57,7 @@ function article(overrides: Partial<ArticleEditorFieldsFragment> = {}): ArticleE
     author: { id: 'u1', name: 'Alice' },
     category: null,
     tags: [],
+    domain: { id: 'd1', myRole: 'OWNER' },
     ...overrides,
   }
 }
