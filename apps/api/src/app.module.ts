@@ -13,6 +13,7 @@ import { DomainsModule } from './domains/domains.module'
 import { TopicsModule } from './topics/topics.module'
 import { ArticlesModule } from './articles/articles.module'
 import { SeoModule } from './seo/seo.module'
+import { PipelineModule } from './pipeline/pipeline.module'
 import { GqlAuthGuard } from './common/guards/gql-auth.guard'
 import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard'
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware'
@@ -42,12 +43,19 @@ import { createPinoHttpOptions } from './common/logging/pino-http-options'
     TopicsModule,
     ArticlesModule,
     SeoModule,
+    PipelineModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_GUARD, useClass: GqlAuthGuard },
     { provide: APP_GUARD, useClass: GqlThrottlerGuard },
   ],
+  // Réexporté pour `worker.ts` seul : son propre module enveloppe importe
+  // `AppModule` et y ajoute `PipelineProcessor` (voir `pipeline.processor.ts`),
+  // qui a besoin d'injecter `PipelineService` et la file BullMQ enregistrée
+  // par `PipelineModule`. Sans réexport ici, ces providers resteraient
+  // encapsulés (règle standard de visibilité des modules Nest).
+  exports: [PipelineModule],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common'
 import { AI_PROVIDER, AIProvider, AIProviderKey } from './ai.types'
 import { FakeAIProvider } from './providers/fake.provider'
+import { AITaskService } from './ai-task.service'
 
 const ACCEPTED_KEYS = 'fake, cli, http'
 
@@ -42,7 +43,13 @@ export function selectAIProvider(key: AIProviderKey, available: { fake: AIProvid
         return selectAIProvider(raw as AIProviderKey, { fake })
       },
     },
+    // Câblé ici (Task 5) : jusqu'à ce lot, `AITaskService` n'était instancié
+    // qu'à la main dans ses tests unitaires (`new AITaskService(fake)`),
+    // jamais par le conteneur Nest — aucun consommateur n'existait encore.
+    // C'est `PipelineModule` qui l'injecte désormais dans les handlers
+    // OUTLINE/DRAFT.
+    AITaskService,
   ],
-  exports: [AI_PROVIDER],
+  exports: [AI_PROVIDER, AITaskService],
 })
 export class AiModule {}

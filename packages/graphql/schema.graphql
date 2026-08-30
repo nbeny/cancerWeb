@@ -209,6 +209,7 @@ type Mutation {
   analyzeSeo(articleId: ID!, domainId: ID!): SeoReport!
   approveArticle(domainId: ID!, id: ID!): Article!
   archiveArticle(domainId: ID!, id: ID!): Article!
+  cancelPipelineRun(domainId: ID!, id: ID!): PipelineRun!
   createArticle(domainId: ID!, input: CreateArticleInput!): Article!
   createArticleVersion(articleId: ID!, changeNote: String, domainId: ID!): ArticleVersion!
   createCategory(domainId: ID!, input: CreateCategoryInput!): Category!
@@ -220,10 +221,12 @@ type Mutation {
   deleteDomain(id: ID!): Boolean!
   deleteTag(domainId: ID!, id: ID!): Boolean!
   deleteTopic(domainId: ID!, id: ID!): Boolean!
+  generateArticle(domainId: ID!, topicId: ID!): PipelineRun!
   login(input: LoginInput!): AuthPayload!
   logout: Boolean!
   publishArticle(domainId: ID!, id: ID!): Article!
   refresh: AuthPayload!
+  regeneratePipelineStep(domainId: ID!, runId: ID!, stepType: StepType!): PipelineRun!
   register(input: RegisterInput!): AuthPayload!
   rejectArticle(domainId: ID!, id: ID!): Article!
   rejectTopic(domainId: ID!, id: ID!): Topic!
@@ -244,6 +247,33 @@ input PageInput {
   offset: Int! = 0
 }
 
+type PipelineRun {
+  articleId: ID
+  completedAt: DateTime
+  createdAt: DateTime!
+  currentStep: StepType
+  domainId: ID!
+  id: ID!
+  startedAt: DateTime
+  status: RunStatus!
+  steps: [PipelineStep!]!
+  topicId: ID
+  triggeredBy: ID
+}
+
+type PipelineStep {
+  attempt: Int!
+  completedAt: DateTime
+  error: String
+  heartbeatAt: DateTime
+  id: ID!
+  order: Int!
+  runId: ID!
+  startedAt: DateTime
+  status: StepStatus!
+  type: StepType!
+}
+
 type Query {
   article(domainId: ID!, id: ID!): Article!
   articleVersions(articleId: ID!, domainId: ID!): [ArticleVersion!]!
@@ -253,6 +283,7 @@ type Query {
   domain(id: ID!): Domain!
   domains(page: PageInput): DomainConnection!
   me: User!
+  pipelineRun(domainId: ID!, id: ID!): PipelineRun!
   seoReports(articleId: ID!, domainId: ID!, page: PageInput): SeoReportConnection!
 
   """Horodatage serveur — sonde de disponibilité."""
@@ -266,6 +297,15 @@ input RegisterInput {
   email: String!
   name: String!
   password: String!
+}
+
+enum RunStatus {
+  CANCELLED
+  COMPLETED
+  FAILED
+  PENDING
+  RUNNING
+  WAITING_REVIEW
 }
 
 enum SearchIntent {
@@ -300,6 +340,27 @@ type SeoReportConnection {
 enum SortDirection {
   ASC
   DESC
+}
+
+enum StepStatus {
+  CANCELLED
+  COMPLETED
+  FAILED
+  PENDING
+  RUNNING
+  SKIPPED
+}
+
+enum StepType {
+  ANALYSIS
+  DRAFT
+  FACT_CHECK
+  OUTLINE
+  PUBLISH
+  QUALITY
+  RESEARCH
+  REVIEW
+  SEO
 }
 
 type Tag {
