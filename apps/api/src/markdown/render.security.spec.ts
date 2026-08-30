@@ -19,10 +19,14 @@ describe('sanitization — batterie de charges utiles', () => {
     ['gestionnaire onload', '<body onload=alert(1)>', ['onload']],
     ['schéma javascript', '[clic](javascript:alert(1))', ['javascript:']],
     ['schéma data', '[clic](data:text/html,<script>alert(1)</script>)', ['data:text/html']],
-    ['iframe', '<iframe src="https://evil.example"></iframe>', ['<iframe']],
-    ['balise style', '<style>body{display:none}</style>', ['<style']],
+    ['iframe', '<iframe src="https://evil.example">CONTENU IFRAME</iframe>', ['<iframe', 'CONTENU IFRAME']],
+    ['balise style', '<style>body{display:none}</style>', ['<style', 'display:none']],
     ['svg onload', '<svg onload=alert(1)></svg>', ['onload']],
-    ['form', '<form action="https://evil.example"><input name="x"></form>', ['<form']],
+    ['form', '<form action="https://evil.example"><input name="x">CONTENU FORM</form>', ['<form', 'CONTENU FORM']],
+    ['textarea', '<textarea>CONTENU TEXTAREA</textarea>', ['<textarea', 'CONTENU TEXTAREA']],
+    ['title', '<title>CONTENU TITLE</title>', ['<title', 'CONTENU TITLE']],
+    ['noframes', '<noframes>CONTENU NOFRAMES</noframes>', ['<noframes', 'CONTENU NOFRAMES']],
+    ['xmp', '<xmp>CONTENU XMP</xmp>', ['<xmp', 'CONTENU XMP']],
   ])('neutralise : %s', (_libelle, payload, interdits) => {
     const sortie = html(payload)
     for (const interdit of interdits) {
