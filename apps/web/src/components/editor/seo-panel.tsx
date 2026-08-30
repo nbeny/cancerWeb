@@ -61,7 +61,13 @@ export function SeoPanel({ report, stale, analyzing, analyzeError, onAnalyze, on
         <p className="text-sm italic text-slate-400">Pas encore analysé.</p>
       ) : (
         <div className={cn('flex flex-col gap-1', stale && 'opacity-50')}>
-          <div className="flex items-baseline gap-2">
+          {/* `role="status"` + `aria-label` explicite : le score et son "/ 100"
+              sont deux `<span>` visuellement adjacents mais sans lien
+              sémantique entre eux pour un lecteur d'écran (ni pour un
+              sélecteur de test accessible, constaté en écrivant le parcours
+              E2E de la Task 19 — un CSS/testid aurait été plus fragile que de
+              corriger ce manque d'accessibilité réel). */}
+          <div className="flex items-baseline gap-2" role="status" aria-label={`Score SEO : ${report.score} sur 100`}>
             <span className={cn('text-4xl font-bold', scoreColor(report.score))}>{report.score}</span>
             <span className="text-sm text-slate-500">/ 100</span>
             {stale && (

@@ -24,10 +24,31 @@ interface Props {
 // faire défiler horizontalement un paragraphe de prose (contrairement à du
 // code, où une ligne longue non wrappée est acceptable).
 export function MarkdownEditor({ value, onChange, readOnly, ariaLabel = 'Contenu Markdown de l’article' }: Props) {
-  const extensions = useMemo(() => [markdown(), EditorView.lineWrapping], [])
+  // `aria-label` sur le `<div>` englobant ci-dessous ne suffit pas : CodeMirror
+  // pose lui-même `role="textbox"` sur son `contentDOM` interne (voir
+  // `@codemirror/view`, `updateAttrs`), et le nom accessible d'un élément
+  // porteur de rôle ne remonte jamais depuis un ancêtre — seul
+  // `EditorView.contentAttributes` permet de poser l'attribut directement sur
+  // cet élément. Sans ce fix, `getByRole('textbox', { name: ariaLabel })` ne
+  // trouve rien (constaté en écrivant le test E2E de la Task 19).
+  const extensions = useMemo(
+    () => [markdown(), EditorView.lineWrapping, EditorView.contentAttributes.of({ 'aria-label': ariaLabel })],
+    [ariaLabel],
+  )
 
   return (
-    <div className="h-full overflow-hidden rounded-md border border-slate-300" aria-label={ariaLabel}>
+    // `min-h-0` en plus de `h-full` : sans lui, cette `<div>` (élément direct
+    // de la grille CSS `grid` posée par `article-editor.tsx`, avec une hauteur
+    // fixe `65vh`) hérite du `min-height: auto` par défaut d'un item de
+    // grille — son contenu (le scroller interne de CodeMirror) peut alors le
+    // faire grandir AU-DELÀ de `65vh` au lieu d'être contenu et de défiler
+    // (`overflow-hidden` seul ne suffit pas à l'empêcher). Constaté en
+    // écrivant le test E2E de la Task 19 : un paragraphe assez long pour être
+    // enveloppé (`lineWrapping`) sur de nombreuses lignes visuelles faisait
+    // déborder l'éditeur par-dessus la barre d'onglets Métadonnées/SEO/Versions
+    // juste en dessous, la rendant non cliquable — un vrai bug d'utilisation,
+    // pas seulement un souci de sélecteur de test.
+    <div className="h-full min-h-0 overflow-hidden rounded-md border border-slate-300">
       <CodeMirror
         value={value}
         onChange={onChange}

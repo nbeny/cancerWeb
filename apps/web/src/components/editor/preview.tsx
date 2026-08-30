@@ -23,7 +23,11 @@ interface Props {
 // rendu Markdown, ce que cette page évite explicitement.
 export function ArticlePreview({ html, stale }: Props) {
   return (
-    <div className="flex h-full flex-col gap-2">
+    // `min-h-0` : même correctif que `markdown-editor.tsx` (voir sa jsdoc) —
+    // cette `<div>` est l'autre item direct de la même grille CSS à hauteur
+    // fixe (`65vh`), et son contenu défilant (`overflow-y-auto` plus bas)
+    // aurait la même possibilité de déborder de la ligne de grille sans lui.
+    <div className="flex h-full min-h-0 flex-col gap-2">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-slate-700">Aperçu</h2>
         {stale && (
