@@ -161,31 +161,30 @@ describe('anti-N+1 : DataLoader sur les champs imbriqués d’Article', () => {
       const QUERY_AUTHOR = `
         query ($domainId: ID!, $id: ID!) { article(domainId: $domainId, id: $id) { id author { id name } } }`
 
-      // Deux requêtes successives, deux utilisateurs distincts : si un loader
-      // était partagé entre requêtes (global plutôt qu'instancié par
-      // requête), la seconde pourrait resservir une valeur mise en cache par
-      // la première sans jamais retoucher la base — indétectable par une
-      // simple comparaison de résultat puisque l'auteur est le même article
-      // pour les deux. Le test compte donc les requêtes SQL réellement
-      // émises pour la seconde lecture : un loader neuf par requête en émet
-      // au moins une (le cache d'un DataLoader ne survit jamais au-delà de
-      // sa propre requête).
-      const firstBefore = queryCount
+      // Deux requêtes successives, deux utilisateurs distincts. Compter les
+      // requêtes SQL émises pour la seconde ne suffit PAS à exclure un loader
+      // partagé : toute requête authentifiée en émet de toute façon avant
+      // même d'atteindre un loader (GqlAuthGuard, DomainRoleGuard,
+      // `findForUser`), donc `secondEmitted > 0` resterait vrai même avec un
+      // singleton global à cache permanent qui ne retoucherait JAMAIS la
+      // table `User`. La preuve qui compte est ailleurs : modifier la ligne
+      // EN BASE entre les deux lectures, et vérifier que la seconde requête
+      // voit la valeur À JOUR. Un loader neuf par requête relit forcément la
+      // base ; un loader global à cache permanent resservirait la valeur
+      // périmée mise en cache par la première requête.
       const first = await h.gql(QUERY_AUTHOR, { domainId, id: articleId }, alice.cookies)
-      expect(queryCount).toBeGreaterThan(firstBefore)
-
-      const secondBefore = queryCount
-      const second = await h.gql(QUERY_AUTHOR, { domainId, id: articleId }, bob.cookies)
-      const secondEmitted = queryCount - secondBefore
-
       expect(first.body.errors).toBeUndefined()
+      expect(first.body.data.article.author.name).toBe('alice')
+
+      await h.prisma.user.update({ where: { id: alice.userId }, data: { name: 'Nom modifié' } })
+
+      const second = await h.gql(QUERY_AUTHOR, { domainId, id: articleId }, bob.cookies)
       expect(second.body.errors).toBeUndefined()
-      expect(first.body.data.article.author.id).toBe(second.body.data.article.author.id)
-      // La requête émise pour l'auteur (au moins une) prouve que le second
-      // appel n'a pas réutilisé un DataLoader (donc un cache) créé pour le
-      // premier — un loader global aurait pu répondre sans re-toucher la
-      // base ici.
-      expect(secondEmitted).toBeGreaterThan(0)
+      expect(second.body.data.article.author.id).toBe(first.body.data.article.author.id)
+      // C'est CETTE assertion qui exclut un loader partagé entre requêtes :
+      // une valeur périmée ('alice') prouverait qu'un cache a survécu à la
+      // requête précédente.
+      expect(second.body.data.article.author.name).toBe('Nom modifié')
     })
   })
 })
