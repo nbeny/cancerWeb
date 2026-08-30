@@ -22,6 +22,13 @@ const schema = z
     GRAPHQL_MAX_COMPLEXITY: z.coerce.number().int().positive().default(1000),
     RATE_LIMIT_TTL: z.coerce.number().int().positive().default(60),
     RATE_LIMIT_LIMIT: z.coerce.number().int().positive().default(200),
+    // Pas de valeur par défaut : un déploiement qui oublie de la fixer doit
+    // échouer bruyamment au démarrage plutôt que de retomber silencieusement
+    // sur `fake`, ce qui ferait tourner de la génération factice en
+    // production sans que personne ne s'en aperçoive.
+    AI_PROVIDER: z.enum(['fake', 'cli', 'http'], {
+      message: "AI_PROVIDER doit valoir l'une de : fake, cli, http",
+    }),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') return
