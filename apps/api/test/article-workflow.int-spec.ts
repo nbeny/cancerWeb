@@ -78,64 +78,87 @@ async function setupDomainWithEditor(role: DomainRole) {
 }
 
 describe('workflow éditorial — transitions', () => {
+  // Correction 2 (revue finale du Lot 1) : ce describe utilisait `alice`
+  // (OWNER, créatrice du domaine) pour TOUTES les actions, y compris celles
+  // dont le rôle minimum est EDITOR — `other`, le membre EDITOR effectivement
+  // créé par `setupDomainWithEditor`, n'était jamais sollicité. Resserrer
+  // `@RequireDomainRole(EDITOR)` en `OWNER` sur les cinq mutations de
+  // transition (approve/reject/publish/schedule/archive) laissait donc les
+  // 179 tests d'intégration verts. Les actions ci-dessous passent maintenant
+  // par `other.cookies` (EDITOR, jamais OWNER) ; seule la création de
+  // l'article reste à la charge d'`alice` (peu importe qui crée, ce n'est pas
+  // ce que ce bloc vérifie).
   describe('chemin heureux complet, EDITOR bout en bout (sauf submit = AUTHOR)', () => {
     it('DRAFT -> REVIEW -> APPROVED -> PUBLISHED', async () => {
-      const { alice, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
+      const { alice, other, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
       const id = await createArticle(alice.cookies, domainId)
 
       const submitted = await h.gql(SUBMIT, { domainId, id }, alice.cookies)
       expect(submitted.body.errors).toBeUndefined()
       expect(submitted.body.data.submitForReview.status).toBe('REVIEW')
 
-      const approved = await h.gql(APPROVE, { domainId, id }, alice.cookies)
+      const approved = await h.gql(APPROVE, { domainId, id }, other.cookies)
       expect(approved.body.errors).toBeUndefined()
       expect(approved.body.data.approveArticle.status).toBe('APPROVED')
 
-      const published = await h.gql(PUBLISH, { domainId, id }, alice.cookies)
+      const published = await h.gql(PUBLISH, { domainId, id }, other.cookies)
       expect(published.body.errors).toBeUndefined()
       expect(published.body.data.publishArticle.status).toBe('PUBLISHED')
       expect(published.body.data.publishArticle.publishedAt).not.toBeNull()
     })
 
     it('DRAFT -> REVIEW -> REVIEW rejetée -> DRAFT (rejet)', async () => {
-      const { alice, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
+      const { alice, other, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
       const id = await createArticle(alice.cookies, domainId)
       await h.gql(SUBMIT, { domainId, id }, alice.cookies)
 
-      const rejected = await h.gql(REJECT, { domainId, id }, alice.cookies)
+      const rejected = await h.gql(REJECT, { domainId, id }, other.cookies)
       expect(rejected.body.errors).toBeUndefined()
       expect(rejected.body.data.rejectArticle.status).toBe('DRAFT')
     })
 
     it('APPROVED -> SCHEDULED -> PUBLISHED', async () => {
-      const { alice, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
+      const { alice, other, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
       const id = await createArticle(alice.cookies, domainId)
       await h.gql(SUBMIT, { domainId, id }, alice.cookies)
-      await h.gql(APPROVE, { domainId, id }, alice.cookies)
+      await h.gql(APPROVE, { domainId, id }, other.cookies)
 
       const futureDate = new Date(Date.now() + 24 * 3600 * 1000).toISOString()
-      const scheduled = await h.gql(SCHEDULE, { domainId, id, scheduledAt: futureDate }, alice.cookies)
+      const scheduled = await h.gql(SCHEDULE, { domainId, id, scheduledAt: futureDate }, other.cookies)
       expect(scheduled.body.errors).toBeUndefined()
       expect(scheduled.body.data.scheduleArticle.status).toBe('SCHEDULED')
       expect(scheduled.body.data.scheduleArticle.scheduledAt).not.toBeNull()
       expect(scheduled.body.data.scheduleArticle.publishedAt).toBeNull()
 
-      const published = await h.gql(PUBLISH, { domainId, id }, alice.cookies)
+      const published = await h.gql(PUBLISH, { domainId, id }, other.cookies)
       expect(published.body.errors).toBeUndefined()
       expect(published.body.data.publishArticle.status).toBe('PUBLISHED')
       expect(published.body.data.publishArticle.publishedAt).not.toBeNull()
     })
 
     it('PUBLISHED -> ARCHIVED', async () => {
-      const { alice, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
+      const { alice, other, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
       const id = await createArticle(alice.cookies, domainId)
       await h.gql(SUBMIT, { domainId, id }, alice.cookies)
-      await h.gql(APPROVE, { domainId, id }, alice.cookies)
-      await h.gql(PUBLISH, { domainId, id }, alice.cookies)
+      await h.gql(APPROVE, { domainId, id }, other.cookies)
+      await h.gql(PUBLISH, { domainId, id }, other.cookies)
 
-      const archived = await h.gql(ARCHIVE, { domainId, id }, alice.cookies)
+      const archived = await h.gql(ARCHIVE, { domainId, id }, other.cookies)
       expect(archived.body.errors).toBeUndefined()
       expect(archived.body.data.archiveArticle.status).toBe('ARCHIVED')
+    })
+
+    it("contre-cas — un EDITOR ne peut PAS supprimer un article (action réservée à OWNER)", async () => {
+      const { alice, other, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
+      const id = await createArticle(alice.cookies, domainId)
+
+      const res = await h.gql(
+        `mutation ($domainId: ID!, $id: ID!) { deleteArticle(domainId: $domainId, id: $id) }`,
+        { domainId, id },
+        other.cookies,
+      )
+      expect(errorCode(res.body)).toBe('FORBIDDEN')
+      expect(await h.prisma.article.count({ where: { id } })).toBe(1)
     })
   })
 
@@ -211,10 +234,10 @@ describe('workflow éditorial — transitions', () => {
     })
 
     it('un EDITOR ne peut pas publier un article encore en DRAFT (transition inexistante, refus au niveau du service)', async () => {
-      const { alice, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
+      const { alice, other, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
       const id = await createArticle(alice.cookies, domainId)
 
-      const res = await h.gql(PUBLISH, { domainId, id }, alice.cookies)
+      const res = await h.gql(PUBLISH, { domainId, id }, other.cookies)
       expect(errorCode(res.body)).toBe('FORBIDDEN')
 
       const stored = await h.prisma.article.findUnique({ where: { id } })
@@ -222,10 +245,10 @@ describe('workflow éditorial — transitions', () => {
     })
 
     it('un EDITOR ne peut pas archiver un article DRAFT (transition inexistante)', async () => {
-      const { alice, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
+      const { alice, other, domainId } = await setupDomainWithEditor(DomainRole.EDITOR)
       const id = await createArticle(alice.cookies, domainId)
 
-      const res = await h.gql(ARCHIVE, { domainId, id }, alice.cookies)
+      const res = await h.gql(ARCHIVE, { domainId, id }, other.cookies)
       expect(errorCode(res.body)).toBe('FORBIDDEN')
     })
 
