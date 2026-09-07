@@ -22,6 +22,22 @@ const schema = z
     GRAPHQL_MAX_COMPLEXITY: z.coerce.number().int().positive().default(1000),
     RATE_LIMIT_TTL: z.coerce.number().int().positive().default(60),
     RATE_LIMIT_LIMIT: z.coerce.number().int().positive().default(200),
+    // Pas de valeur par défaut : un déploiement qui oublie de la fixer doit
+    // échouer bruyamment au démarrage plutôt que de retomber silencieusement
+    // sur `fake`, ce qui ferait tourner de la génération factice en
+    // production sans que personne ne s'en aperçoive.
+    AI_PROVIDER: z.enum(['fake', 'cli', 'http'], {
+      message: "AI_PROVIDER doit valoir l'une de : fake, cli, http",
+    }),
+    // Lue directement via `process.env` par `pipeline.module.ts` (même motif
+    // que `AI_PROVIDER` dans `ai.module.ts` : la valeur choisit du code
+    // IMPORTÉ statiquement ou non, avant que Nest n'ait fini de construire
+    // `ConfigService`) — déclarée ici uniquement pour que `parseEnv` échoue
+    // tôt et lisiblement sur une valeur invalide. `bullmq` par défaut
+    // (production/dev) ; `.env.test` la force à `inline` pour que la suite
+    // d'intégration n'ouvre jamais de connexion Redis (voir
+    // `pipeline-queue.ts`).
+    PIPELINE_QUEUE_DRIVER: z.enum(['bullmq', 'inline']).default('bullmq'),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') return

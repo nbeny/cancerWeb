@@ -97,9 +97,20 @@ export type ExpertiseLevel =
   | 'EXPERT'
   | 'INTERMEDIATE';
 
+export type GenerateTopicsInput = {
+  count: number;
+};
+
 export type GlobalRole =
   | 'ADMIN'
   | 'USER';
+
+export type JobStatus =
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'PENDING'
+  | 'RUNNING';
 
 export type LoginInput = {
   email: string;
@@ -111,11 +122,23 @@ export type PageInput = {
   offset?: number;
 };
 
+export type PipelineRunFilter = {
+  status?: RunStatus | null | undefined;
+};
+
 export type RegisterInput = {
   email: string;
   name: string;
   password: string;
 };
+
+export type RunStatus =
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'PENDING'
+  | 'RUNNING'
+  | 'WAITING_REVIEW';
 
 export type SearchIntent =
   | 'COMMERCIAL'
@@ -126,6 +149,26 @@ export type SearchIntent =
 export type SortDirection =
   | 'ASC'
   | 'DESC';
+
+export type StepStatus =
+  | 'CANCELLED'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'PENDING'
+  | 'RUNNING'
+  | 'SKIPPED';
+
+export type StepType =
+  | 'ANALYSIS'
+  | 'DRAFT'
+  | 'FACT_CHECK'
+  | 'OUTLINE'
+  | 'PUBLISH'
+  | 'QUALITY'
+  | 'RESEARCH'
+  | 'REVIEW'
+  | 'SEO'
+  | 'TOPIC_GENERATION';
 
 export type Tone =
   | 'ACCESSIBLE'
@@ -405,6 +448,69 @@ export type DeleteDomainMutationVariables = Exact<{
 
 export type DeleteDomainMutation = { deleteDomain: boolean };
 
+export type AiJobFieldsFragment = { id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string };
+
+export type PipelineStepFieldsFragment = { id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> };
+
+export type PipelineRunFieldsFragment = { id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> };
+
+export type PipelineRunQueryVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type PipelineRunQuery = { pipelineRun: { id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> } };
+
+export type PipelineRunsQueryVariables = Exact<{
+  domainId: string | number;
+  filter?: PipelineRunFilter | null | undefined;
+  page?: PageInput | null | undefined;
+}>;
+
+
+export type PipelineRunsQuery = { pipelineRuns: { totalCount: number, items: Array<{ id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> }> } };
+
+export type PipelineQueueQueryVariables = Exact<{
+  domainId: string | number;
+}>;
+
+
+export type PipelineQueueQuery = { pipelineQueue: Array<{ position: number, estimatedWaitSeconds: number | null, run: { id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> } }> };
+
+export type GenerateArticleMutationVariables = Exact<{
+  domainId: string | number;
+  topicId: string | number;
+}>;
+
+
+export type GenerateArticleMutation = { generateArticle: { id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> } };
+
+export type GenerateTopicsMutationVariables = Exact<{
+  domainId: string | number;
+  input: GenerateTopicsInput;
+}>;
+
+
+export type GenerateTopicsMutation = { generateTopics: { id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> } };
+
+export type CancelPipelineRunMutationVariables = Exact<{
+  domainId: string | number;
+  id: string | number;
+}>;
+
+
+export type CancelPipelineRunMutation = { cancelPipelineRun: { id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> } };
+
+export type RegenerateStepMutationVariables = Exact<{
+  domainId: string | number;
+  runId: string | number;
+  step: StepType;
+}>;
+
+
+export type RegenerateStepMutation = { regenerateStep: { id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> } };
+
 export type SeoReportFieldsFragment = { id: string, articleId: string, score: number, cappedBy: Array<string>, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> };
 
 export type AnalyzeSeoMutationVariables = Exact<{
@@ -651,6 +757,56 @@ export const DomainFieldsFragmentDoc = gql`
   myRole
 }
     `;
+export const AiJobFieldsFragmentDoc = gql`
+    fragment AIJobFields on AIJob {
+  id
+  type
+  provider
+  model
+  promptVersion
+  status
+  error
+  durationMs
+  correlationId
+  startedAt
+  completedAt
+  createdAt
+}
+    `;
+export const PipelineStepFieldsFragmentDoc = gql`
+    fragment PipelineStepFields on PipelineStep {
+  id
+  runId
+  type
+  order
+  status
+  attempt
+  error
+  heartbeatAt
+  startedAt
+  completedAt
+  jobs {
+    ...AIJobFields
+  }
+}
+    ${AiJobFieldsFragmentDoc}`;
+export const PipelineRunFieldsFragmentDoc = gql`
+    fragment PipelineRunFields on PipelineRun {
+  id
+  domainId
+  topicId
+  articleId
+  triggeredBy
+  status
+  currentStep
+  startedAt
+  completedAt
+  createdAt
+  steps {
+    ...PipelineStepFields
+  }
+}
+    ${PipelineStepFieldsFragmentDoc}`;
 export const SeoReportFieldsFragmentDoc = gql`
     fragment SeoReportFields on SeoReport {
   id
@@ -945,6 +1101,62 @@ export const DeleteDomainDocument = gql`
   deleteDomain(id: $id)
 }
     `;
+export const PipelineRunDocument = gql`
+    query PipelineRun($domainId: ID!, $id: ID!) {
+  pipelineRun(domainId: $domainId, id: $id) {
+    ...PipelineRunFields
+  }
+}
+    ${PipelineRunFieldsFragmentDoc}`;
+export const PipelineRunsDocument = gql`
+    query PipelineRuns($domainId: ID!, $filter: PipelineRunFilter, $page: PageInput) {
+  pipelineRuns(domainId: $domainId, filter: $filter, page: $page) {
+    items {
+      ...PipelineRunFields
+    }
+    totalCount
+  }
+}
+    ${PipelineRunFieldsFragmentDoc}`;
+export const PipelineQueueDocument = gql`
+    query PipelineQueue($domainId: ID!) {
+  pipelineQueue(domainId: $domainId) {
+    position
+    estimatedWaitSeconds
+    run {
+      ...PipelineRunFields
+    }
+  }
+}
+    ${PipelineRunFieldsFragmentDoc}`;
+export const GenerateArticleDocument = gql`
+    mutation GenerateArticle($domainId: ID!, $topicId: ID!) {
+  generateArticle(domainId: $domainId, topicId: $topicId) {
+    ...PipelineRunFields
+  }
+}
+    ${PipelineRunFieldsFragmentDoc}`;
+export const GenerateTopicsDocument = gql`
+    mutation GenerateTopics($domainId: ID!, $input: GenerateTopicsInput!) {
+  generateTopics(domainId: $domainId, input: $input) {
+    ...PipelineRunFields
+  }
+}
+    ${PipelineRunFieldsFragmentDoc}`;
+export const CancelPipelineRunDocument = gql`
+    mutation CancelPipelineRun($domainId: ID!, $id: ID!) {
+  cancelPipelineRun(domainId: $domainId, id: $id) {
+    ...PipelineRunFields
+  }
+}
+    ${PipelineRunFieldsFragmentDoc}`;
+export const RegenerateStepDocument = gql`
+    mutation RegenerateStep($domainId: ID!, $runId: ID!, $step: StepType!) {
+  regenerateStep(domainId: $domainId, runId: $runId, step: $step) {
+    ...PipelineRunFields
+  }
+}
+    ${PipelineRunFieldsFragmentDoc}`;
 export const AnalyzeSeoDocument = gql`
     mutation AnalyzeSeo($domainId: ID!, $articleId: ID!) {
   analyzeSeo(domainId: $domainId, articleId: $articleId) {
@@ -1089,6 +1301,13 @@ const DomainByIdDocumentString = print(DomainByIdDocument);
 const CreateDomainDocumentString = print(CreateDomainDocument);
 const UpdateDomainDocumentString = print(UpdateDomainDocument);
 const DeleteDomainDocumentString = print(DeleteDomainDocument);
+const PipelineRunDocumentString = print(PipelineRunDocument);
+const PipelineRunsDocumentString = print(PipelineRunsDocument);
+const PipelineQueueDocumentString = print(PipelineQueueDocument);
+const GenerateArticleDocumentString = print(GenerateArticleDocument);
+const GenerateTopicsDocumentString = print(GenerateTopicsDocument);
+const CancelPipelineRunDocumentString = print(CancelPipelineRunDocument);
+const RegenerateStepDocumentString = print(RegenerateStepDocument);
 const AnalyzeSeoDocumentString = print(AnalyzeSeoDocument);
 const SeoReportsDocumentString = print(SeoReportsDocument);
 const CategoriesDocumentString = print(CategoriesDocument);
@@ -1187,6 +1406,27 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     DeleteDomain(variables: DeleteDomainMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: DeleteDomainMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<DeleteDomainMutation>(DeleteDomainDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteDomain', 'mutation', variables);
+    },
+    PipelineRun(variables: PipelineRunQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PipelineRunQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PipelineRunQuery>(PipelineRunDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PipelineRun', 'query', variables);
+    },
+    PipelineRuns(variables: PipelineRunsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PipelineRunsQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PipelineRunsQuery>(PipelineRunsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PipelineRuns', 'query', variables);
+    },
+    PipelineQueue(variables: PipelineQueueQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PipelineQueueQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PipelineQueueQuery>(PipelineQueueDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PipelineQueue', 'query', variables);
+    },
+    GenerateArticle(variables: GenerateArticleMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: GenerateArticleMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<GenerateArticleMutation>(GenerateArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GenerateArticle', 'mutation', variables);
+    },
+    GenerateTopics(variables: GenerateTopicsMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: GenerateTopicsMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<GenerateTopicsMutation>(GenerateTopicsDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GenerateTopics', 'mutation', variables);
+    },
+    CancelPipelineRun(variables: CancelPipelineRunMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: CancelPipelineRunMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<CancelPipelineRunMutation>(CancelPipelineRunDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CancelPipelineRun', 'mutation', variables);
+    },
+    RegenerateStep(variables: RegenerateStepMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RegenerateStepMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<RegenerateStepMutation>(RegenerateStepDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RegenerateStep', 'mutation', variables);
     },
     AnalyzeSeo(variables: AnalyzeSeoMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: AnalyzeSeoMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<AnalyzeSeoMutation>(AnalyzeSeoDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'AnalyzeSeo', 'mutation', variables);

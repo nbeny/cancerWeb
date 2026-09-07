@@ -93,6 +93,9 @@ export default async function TopicsPage({ searchParams }: PageProps) {
         <h1 className="text-xl font-semibold text-slate-900">Idées d’articles</h1>
         <div className="flex items-center gap-3">
           <DomainSwitcher domains={domains} currentDomainId={domainId} basePath="/dashboard/topics" />
+          <Link href={`/dashboard/topics/generate?domainId=${domainId}`}>
+            <Button variant="secondary">Générer des idées</Button>
+          </Link>
           <Link href={`/dashboard/topics/new?domainId=${domainId}`}>
             <Button>Nouvelle idée</Button>
           </Link>

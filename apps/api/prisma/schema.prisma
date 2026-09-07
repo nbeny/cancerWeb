@@ -84,6 +84,14 @@ enum StepType {
   QUALITY
   REVIEW
   PUBLISH
+  // Étape unique d'un `PipelineRun` sans `topicId`/`articleId` (Task 6,
+  // Lot 2) : génère plusieurs `Topic` en un seul appel IA
+  // (`AITaskService.generateTopics`), hors du gabarit à 7 étapes déclaré
+  // dans `pipeline-steps.ts` (celui-ci ne concerne que la génération d'un
+  // article à partir d'un `Topic` déjà choisi). Traitée à part dans
+  // `PipelineService` (`executeStep`/`advance`), jamais via
+  // `STEP_DEFINITIONS`.
+  TOPIC_GENERATION
 }
 
 enum StepStatus {

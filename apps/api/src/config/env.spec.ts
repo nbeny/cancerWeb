@@ -8,6 +8,7 @@ const valid = {
   PUBLIC_ORIGIN: 'http://localhost:3000',
   JWT_ACCESS_SECRET: 'a'.repeat(32),
   JWT_REFRESH_SECRET: 'b'.repeat(32),
+  AI_PROVIDER: 'fake',
 }
 
 describe('parseEnv', () => {
@@ -59,5 +60,18 @@ describe('parseEnv', () => {
         JWT_REFRESH_SECRET: 'y'.repeat(32),
       }),
     ).not.toThrow()
+  })
+
+  it.each(['fake', 'cli', 'http'])("accepte AI_PROVIDER=%s", (provider) => {
+    expect(() => parseEnv({ ...valid, AI_PROVIDER: provider })).not.toThrow()
+  })
+
+  it('rejette une AI_PROVIDER absente', () => {
+    const { AI_PROVIDER, ...withoutAiProvider } = valid
+    expect(() => parseEnv(withoutAiProvider)).toThrow(/AI_PROVIDER/)
+  })
+
+  it('rejette une AI_PROVIDER inconnue en listant les valeurs acceptées', () => {
+    expect(() => parseEnv({ ...valid, AI_PROVIDER: 'openai' })).toThrow(/AI_PROVIDER/)
   })
 })
