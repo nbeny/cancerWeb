@@ -278,6 +278,26 @@ export function ArticleEditor({ domainId, article: initialArticle, categories, a
         />
       </div>
 
+      {/* Justification héritée du sujet dont l'article a été généré : contexte
+          en LECTURE SEULE pour le rédacteur. Elle est écrite par le pipeline
+          IA puis recopiée du sujet vers l'article, jamais soumise par un
+          client — `UpdateArticleInput` n'expose aucun champ `rationale`, au
+          même titre que le slug affiché en lecture seule dans
+          `meta-panel.tsx`. Elle n'entre donc ni dans `EditableFields` ni dans
+          le suivi des modifications non enregistrées.
+
+          Placée entre l'en-tête et la surface de rédaction : c'est le moment
+          où on la lit, AVANT d'écrire — pas au fond d'un onglet. Rien n'est
+          rendu quand elle est absente (articles rédigés à la main, et tous
+          ceux créés avant ce champ) : ni libellé vide, ni tiret. */}
+      {article.rationale && (
+        <aside className="rounded-md border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Pourquoi cet article</p>
+          <p className="mt-1 text-sm italic text-slate-700">{article.rationale}</p>
+          <p className="mt-1 text-xs text-slate-400">Justification héritée du sujet d’origine, non modifiable.</p>
+        </aside>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-2" style={{ height: '65vh' }}>
         <MarkdownEditor value={fields.content} onChange={(value) => updateField({ content: value })} />
         <ArticlePreview html={article.renderedHtml ?? ''} stale={saveStatus !== 'saved'} />

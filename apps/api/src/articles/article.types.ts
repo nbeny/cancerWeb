@@ -44,6 +44,7 @@ export class Article {
   @Field() content!: string
   @Field(() => String, { nullable: true }) renderedHtml?: string | null
   @Field(() => String, { nullable: true }) excerpt?: string | null
+  @Field(() => String, { nullable: true }) rationale?: string | null
   @Field(() => String, { nullable: true }) coverImageUrl?: string | null
   @Field(() => ArticleStatus) status!: ArticleStatus
   @Field(() => Int) currentVersion!: number

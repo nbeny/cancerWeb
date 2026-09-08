@@ -38,6 +38,7 @@ function article(overrides: Partial<ArticleEditorFieldsFragment> = {}): ArticleE
     content: '# Contenu',
     renderedHtml: '<h1>Contenu</h1>',
     excerpt: null,
+    rationale: null,
     coverImageUrl: null,
     seoTitle: null,
     metaDescription: null,
@@ -235,5 +236,27 @@ describe('ArticleEditor — Correction 7 (amplification d’écriture SEO)', () 
       await Promise.resolve()
     })
     expect(browserSdk.AnalyzeSeo).not.toHaveBeenCalled()
+  })
+})
+
+describe('ArticleEditor — justification héritée du sujet', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('affiche la justification quand le sujet en a fourni une', () => {
+    renderEditor({ rationale: 'Aucun contenu du domaine ne couvre encore les effets tardifs de la radiothérapie.' })
+
+    expect(screen.getByText('Pourquoi cet article')).toBeDefined()
+    expect(
+      screen.getByText('Aucun contenu du domaine ne couvre encore les effets tardifs de la radiothérapie.'),
+    ).toBeDefined()
+  })
+
+  it("n'affiche RIEN quand la justification est absente (article rédigé à la main) — ni libellé, ni valeur de remplacement", () => {
+    renderEditor({ rationale: null })
+
+    expect(screen.queryByText('Pourquoi cet article')).toBeNull()
+    expect(screen.queryByText('Justification héritée du sujet d’origine, non modifiable.')).toBeNull()
   })
 })

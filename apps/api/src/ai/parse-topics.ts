@@ -87,6 +87,12 @@ function topicFromJsonEntry(entry: unknown): TopicDraft | undefined {
 
   if (typeof obj.description === 'string' && obj.description.trim()) draft.description = obj.description.trim()
 
+  // Trois noms acceptés pour la même notion : le prompt demande `rationale`,
+  // mais un modèle qui répond en français produit spontanément `pourquoi`.
+  // Même tolérance que pour `angle` / `suggestedAngle` ci-dessus.
+  const rationale = obj.rationale ?? obj.pourquoi ?? obj.why
+  if (typeof rationale === 'string' && rationale.trim()) draft.rationale = rationale.trim()
+
   if (Array.isArray(obj.keywords)) {
     const keywords = obj.keywords.filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
     if (keywords.length > 0) draft.keywords = keywords

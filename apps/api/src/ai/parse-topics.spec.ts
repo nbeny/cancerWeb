@@ -45,3 +45,22 @@ describe('parseTopics', () => {
     expect(() => parseTopics('Je ne sais pas quoi proposer.')).toThrow(/sujet/i)
   })
 })
+
+describe('parseTopics — justification', () => {
+  it('extrait rationale du JSON', () => {
+    const [topic] = parseTopics('[{"title":"Zero Trust","rationale":"Comble un manque sur le domaine."}]')
+    expect(topic?.rationale).toBe('Comble un manque sur le domaine.')
+  })
+
+  it('accepte aussi les clés "pourquoi" et "why"', () => {
+    const [fr] = parseTopics('[{"title":"A","pourquoi":"Raison FR."}]')
+    const [en] = parseTopics('[{"title":"B","why":"Raison EN."}]')
+    expect(fr?.rationale).toBe('Raison FR.')
+    expect(en?.rationale).toBe('Raison EN.')
+  })
+
+  it('laisse rationale absent quand le modèle ne la fournit pas', () => {
+    const [topic] = parseTopics('[{"title":"Sans justification"}]')
+    expect(topic?.rationale).toBeUndefined()
+  })
+})

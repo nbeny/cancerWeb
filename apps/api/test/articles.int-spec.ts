@@ -13,7 +13,7 @@ const CREATE_TOPIC = `
 const CREATE_ARTICLE = `
   mutation ($domainId: ID!, $input: CreateArticleInput!) {
     createArticle(domainId: $domainId, input: $input) {
-      id title slug content renderedHtml wordCount topicId status
+      id title slug content renderedHtml wordCount topicId status rationale
     }
   }`
 const LIST_ARTICLES = `
@@ -102,6 +102,41 @@ describe('articles', () => {
       const message = second.body.errors?.[0]?.message as string
       expect(message).not.toMatch(/prisma|PrismaClient|P20\d\d/i)
       expect(await h.prisma.article.count()).toBe(1)
+    })
+
+    it('reprend la justification du sujet sur l’article créé', async () => {
+      const { cookies } = await signUp('alice@example.com')
+      const domainId = await createDomain(cookies)
+      const topicId = await createTopic(cookies, domainId, 'Sujet justifié')
+      // Écriture directe en base, faute de chemin client : `rationale` est
+      // absente de `CreateTopicInput`/`UpdateTopicInput` par construction —
+      // seule la génération IA la remplit (voir `PipelineService`). C'est donc
+      // l'état qu'un sujet issu du pipeline présente au moment de sa
+      // conversion en article.
+      await h.prisma.topic.update({ where: { id: topicId }, data: { rationale: 'Comble un manque sur ce domaine.' } })
+
+      const res = await h.gql(CREATE_ARTICLE, { domainId, input: baseArticleInput({ topicId }) }, cookies)
+
+      expect(res.body.errors).toBeUndefined()
+      expect(res.body.data.createArticle.rationale).toBe('Comble un manque sur ce domaine.')
+      const stored = await h.prisma.article.findUnique({ where: { id: res.body.data.createArticle.id } })
+      expect(stored?.rationale).toBe('Comble un manque sur ce domaine.')
+    })
+
+    it('laisse la justification à null quand le sujet n’en a pas', async () => {
+      const { cookies } = await signUp('alice@example.com')
+      const domainId = await createDomain(cookies)
+      const topicId = await createTopic(cookies, domainId)
+
+      const res = await h.gql(CREATE_ARTICLE, { domainId, input: baseArticleInput({ topicId }) }, cookies)
+
+      // Strictement `null` en base : un sujet sans justification (créé à la
+      // main, ou généré par un modèle qui a omis la clé) ne doit pas produire
+      // une chaîne `"null"`/`"undefined"` ni une chaîne vide, que
+      // `article-editor.tsx` afficherait comme une justification réelle.
+      expect(res.body.data.createArticle.rationale).toBeNull()
+      const stored = await h.prisma.article.findUnique({ where: { id: res.body.data.createArticle.id } })
+      expect(stored?.rationale).toBeNull()
     })
   })
 

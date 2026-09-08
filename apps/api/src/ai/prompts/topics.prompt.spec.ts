@@ -26,6 +26,26 @@ describe('buildTopicsPrompt', () => {
   })
 
   it('exporte une version de prompt stable', () => {
-    expect(TOPICS_PROMPT_VERSION).toBe('TOPICS_V1')
+    expect(TOPICS_PROMPT_VERSION).toBe('TOPICS_V2')
+  })
+})
+
+describe('buildTopicsPrompt — justification et anti-redite', () => {
+  it('demande une justification ancrée dans le domaine', () => {
+    const prompt = buildTopicsPrompt(makeDomain(), 3, [])
+    expect(prompt).toMatch(/rationale/)
+    expect(prompt).toMatch(/pourquoi/i)
+  })
+
+  it('liste les sujets déjà proposés avec une consigne de ne pas y revenir', () => {
+    const prompt = buildTopicsPrompt(makeDomain(), 3, ['Zero Trust en entreprise', 'Phishing et IA'])
+    expect(prompt).toContain('Zero Trust en entreprise')
+    expect(prompt).toContain('Phishing et IA')
+    expect(prompt).toMatch(/déjà proposés/i)
+  })
+
+  it("n'ajoute aucun bloc de redite quand le domaine n'a encore aucun sujet", () => {
+    const prompt = buildTopicsPrompt(makeDomain(), 3, [])
+    expect(prompt).not.toMatch(/déjà proposés/i)
   })
 })

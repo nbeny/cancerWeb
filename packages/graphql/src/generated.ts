@@ -265,7 +265,7 @@ export type ArticleTagsQueryVariables = Exact<{
 
 export type ArticleTagsQuery = { tags: Array<{ id: string, name: string, slug: string }> };
 
-export type ArticleEditorFieldsFragment = { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } };
+export type ArticleEditorFieldsFragment = { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, rationale: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } };
 
 export type ArticleStatusFieldsFragment = { id: string, status: ArticleStatus, currentVersion: number, publishedAt: string | null, scheduledAt: string | null, updatedAt: string };
 
@@ -277,7 +277,7 @@ export type ArticleQueryVariables = Exact<{
 }>;
 
 
-export type ArticleQuery = { article: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
+export type ArticleQuery = { article: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, rationale: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
 
 export type UpdateArticleMutationVariables = Exact<{
   domainId: string | number;
@@ -286,7 +286,7 @@ export type UpdateArticleMutationVariables = Exact<{
 }>;
 
 
-export type UpdateArticleMutation = { updateArticle: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
+export type UpdateArticleMutation = { updateArticle: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, rationale: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
 
 export type SetArticleCategoryMutationVariables = Exact<{
   domainId: string | number;
@@ -379,7 +379,7 @@ export type RestoreArticleVersionMutationVariables = Exact<{
 }>;
 
 
-export type RestoreArticleVersionMutation = { restoreArticleVersion: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
+export type RestoreArticleVersionMutation = { restoreArticleVersion: { id: string, domainId: string, title: string, slug: string, status: ArticleStatus, content: string, renderedHtml: string | null, excerpt: string | null, rationale: string | null, coverImageUrl: string | null, seoTitle: string | null, metaDescription: string | null, focusKeyword: string | null, secondaryKeywords: Array<string>, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean, latestSeoScore: number | null, currentVersion: number, wordCount: number, topicId: string | null, publishedAt: string | null, scheduledAt: string | null, createdAt: string, updatedAt: string, author: { id: string, name: string }, category: { id: string, name: string } | null, tags: Array<{ id: string, name: string }>, domain: { id: string, myRole: DomainRole } } };
 
 export type LoginMutationVariables = Exact<{
   input: LoginInput;
@@ -589,7 +589,7 @@ export type DeleteTagMutationVariables = Exact<{
 
 export type DeleteTagMutation = { deleteTag: boolean };
 
-export type TopicFieldsFragment = { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string };
+export type TopicFieldsFragment = { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, rationale: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string };
 
 export type TopicsQueryVariables = Exact<{
   domainId: string | number;
@@ -598,7 +598,7 @@ export type TopicsQueryVariables = Exact<{
 }>;
 
 
-export type TopicsQuery = { topics: { totalCount: number, items: Array<{ id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string }> } };
+export type TopicsQuery = { topics: { totalCount: number, items: Array<{ id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, rationale: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string }> } };
 
 export type TopicByIdQueryVariables = Exact<{
   domainId: string | number;
@@ -606,7 +606,7 @@ export type TopicByIdQueryVariables = Exact<{
 }>;
 
 
-export type TopicByIdQuery = { topic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+export type TopicByIdQuery = { topic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, rationale: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
 
 export type CreateTopicMutationVariables = Exact<{
   domainId: string | number;
@@ -614,7 +614,7 @@ export type CreateTopicMutationVariables = Exact<{
 }>;
 
 
-export type CreateTopicMutation = { createTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+export type CreateTopicMutation = { createTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, rationale: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
 
 export type UpdateTopicMutationVariables = Exact<{
   domainId: string | number;
@@ -623,7 +623,7 @@ export type UpdateTopicMutationVariables = Exact<{
 }>;
 
 
-export type UpdateTopicMutation = { updateTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+export type UpdateTopicMutation = { updateTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, rationale: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
 
 export type SelectTopicMutationVariables = Exact<{
   domainId: string | number;
@@ -631,7 +631,7 @@ export type SelectTopicMutationVariables = Exact<{
 }>;
 
 
-export type SelectTopicMutation = { selectTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+export type SelectTopicMutation = { selectTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, rationale: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
 
 export type RejectTopicMutationVariables = Exact<{
   domainId: string | number;
@@ -639,7 +639,7 @@ export type RejectTopicMutationVariables = Exact<{
 }>;
 
 
-export type RejectTopicMutation = { rejectTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
+export type RejectTopicMutation = { rejectTopic: { id: string, domainId: string, title: string, description: string | null, status: TopicStatus, estimatedDifficulty: number | null, estimatedInterest: number | null, keywords: Array<string>, searchIntent: SearchIntent | null, suggestedAngle: string | null, rationale: string | null, generatedByJobId: string | null, createdAt: string, updatedAt: string } };
 
 export type DeleteTopicMutationVariables = Exact<{
   domainId: string | number;
@@ -679,6 +679,7 @@ export const ArticleEditorFieldsFragmentDoc = gql`
   content
   renderedHtml
   excerpt
+  rationale
   coverImageUrl
   seoTitle
   metaDescription
@@ -854,6 +855,7 @@ export const TopicFieldsFragmentDoc = gql`
   keywords
   searchIntent
   suggestedAngle
+  rationale
   generatedByJobId
   createdAt
   updatedAt

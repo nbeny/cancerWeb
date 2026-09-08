@@ -116,6 +116,12 @@ export function TopicsTable({ domainId, topics, totalCount, page, pageSize, empt
         <div>
           <p className="font-medium text-slate-900">{topic.title}</p>
           {topic.description && <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{topic.description}</p>}
+          {topic.rationale && (
+            <p className="mt-1 text-xs italic text-slate-600">
+              <span className="font-medium not-italic">Pourquoi ce sujet : </span>
+              {topic.rationale}
+            </p>
+          )}
         </div>
       ),
     },

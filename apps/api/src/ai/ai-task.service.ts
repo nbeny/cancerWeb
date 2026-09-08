@@ -25,8 +25,20 @@ import { buildTopicsPrompt } from './prompts/topics.prompt'
 export class AITaskService {
   constructor(@Inject(AI_PROVIDER) private readonly provider: AIProvider) {}
 
-  async generateTopics(domain: Domain, count: number, correlationId?: string): Promise<TopicDraft[]> {
-    const prompt = buildTopicsPrompt(domain, count)
+  /**
+   * `existingTitles` remonte jusqu'au prompt pour que le modèle ne repropose
+   * pas un sujet déjà présent sur le domaine (voir `buildTopicsPrompt`). Ce
+   * service ne persiste rien et ne filtre rien : le rejet des doublons qui
+   * passeraient malgré la consigne appartient à l'appelant
+   * (`PipelineService.runTopicGenerationStep`).
+   */
+  async generateTopics(
+    domain: Domain,
+    count: number,
+    existingTitles: string[] = [],
+    correlationId?: string,
+  ): Promise<TopicDraft[]> {
+    const prompt = buildTopicsPrompt(domain, count, existingTitles)
     const result = await this.provider.complete({ prompt, correlationId })
     return parseTopics(result.text)
   }

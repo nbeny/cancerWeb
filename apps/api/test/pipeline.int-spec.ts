@@ -482,6 +482,89 @@ describe('pipeline (Task 5 — orchestration)', () => {
       }
     })
 
+    // Les trois titres de la fixture `TOPICS` de `FakeAIProvider`
+    // (`src/ai/providers/fake.provider.ts`), reproduits ici parce que c'est
+    // précisément leur caractère FIXE qui rend les deux tests suivants
+    // possibles : le fake ignore les titres existants transmis au prompt, et
+    // repropose donc toujours les mêmes sujets — exactement le comportement
+    // d'un modèle qui n'obéit pas à la consigne « ne repropose pas », que le
+    // filtre côté pipeline existe pour rattraper.
+    const FAKE_TITLES = [
+      "Comprendre l'immunothérapie moderne",
+      'Nutrition et traitements du cancer : ce que dit la science',
+      'Vivre avec un cancer chronique : organiser le quotidien',
+    ]
+
+    it('n’insère pas un sujet dont le titre existe déjà sur le domaine — même rejeté par l’équipe éditoriale — et trace le rejet dans la sortie de l’étape', async () => {
+      const cookies = await signUp('alice@example.com')
+      const domainId = await createDomain(cookies)
+
+      // Statut REJECTED délibérément : c'est le cas le plus exigeant du
+      // filtre, et le seul qui distingue « tous statuts confondus » d'un
+      // banal filtrage sur les sujets encore en lice. Un sujet que l'équipe
+      // a explicitement écarté ne doit pas revenir à la génération suivante.
+      await h.prisma.topic.create({ data: { domainId, title: FAKE_TITLES[0]!, keywords: [], status: 'REJECTED' } })
+
+      const created = (await h.gql(GENERATE_TOPICS, { domainId, input: { count: 3 } }, cookies)).body.data.generateTopics
+      expect(await queue.pumpAll()).toBe(1)
+
+      const finalRun = (await h.gql(PIPELINE_RUN, { domainId, id: created.id }, cookies)).body.data.pipelineRun
+      expect(finalRun.status).toBe('COMPLETED')
+
+      const persisted = await h.prisma.topic.findMany({ where: { domainId } })
+      expect(persisted.filter((t) => t.title === FAKE_TITLES[0])).toHaveLength(1) // pas de second exemplaire
+      expect(persisted).toHaveLength(3) // le sujet rejeté + les deux sujets réellement nouveaux
+
+      const step = await h.prisma.pipelineStep.findFirstOrThrow({
+        where: { runId: created.id, type: StepType.TOPIC_GENERATION },
+      })
+      const output = step.output as { topicIds: string[]; skippedDuplicates: number }
+      expect(output.skippedDuplicates).toBe(1)
+      expect(output.topicIds).toHaveLength(2)
+
+      // Seul endroit du dépôt où la chaîne complète de la justification est
+      // vérifiée de bout en bout : le prompt réclame `rationale`,
+      // `parseTopics` l'extrait du JSON du modèle, et le pipeline l'écrit
+      // dans la colonne ajoutée par la migration. Les trois maillons peuvent
+      // se contredire sans qu'aucun test unitaire ne s'en aperçoive — d'où
+      // une lecture depuis la BASE, jamais depuis le `TopicDraft`.
+      const generated = persisted.filter((topic) => output.topicIds.includes(topic.id))
+      expect(generated).toHaveLength(2)
+      for (const topic of generated) {
+        expect(topic.rationale?.trim()).toBeTruthy() // ni null (colonne jamais écrite), ni chaîne vide
+      }
+      // Le sujet préexistant a été créé à la main : rien ne doit lui inventer
+      // une justification au passage.
+      expect(persisted.find((t) => t.title === FAKE_TITLES[0])?.rationale).toBeNull()
+
+      // Ancrage sur le CONTENU de la fixture, et pas seulement sur sa
+      // présence : une justification tronquée, réordonnée ou recopiée depuis
+      // un autre champ passerait un simple test de non-vacuité.
+      const nutrition = generated.find((topic) => topic.title === FAKE_TITLES[1])
+      expect(nutrition?.rationale).toMatch(/sites sans base scientifique/)
+    })
+
+    it('échoue bruyamment quand TOUS les sujets proposés existent déjà, plutôt que de terminer sur zéro sujet créé', async () => {
+      const cookies = await signUp('alice@example.com')
+      const domainId = await createDomain(cookies)
+      for (const title of FAKE_TITLES) {
+        await h.prisma.topic.create({ data: { domainId, title, keywords: [] } })
+      }
+
+      const created = (await h.gql(GENERATE_TOPICS, { domainId, input: { count: 3 } }, cookies)).body.data.generateTopics
+      await queue.pumpAll()
+
+      // Un run COMPLETED sans le moindre sujet créé serait indiscernable d'un
+      // modèle muet : l'échec explicite est la seule issue qui dise à
+      // l'utilisateur POURQUOI il n'a rien reçu.
+      const finalRun = (await h.gql(PIPELINE_RUN, { domainId, id: created.id }, cookies)).body.data.pipelineRun
+      expect(finalRun.status).toBe('FAILED')
+      expect(finalRun.steps[0].status).toBe('FAILED')
+      expect(finalRun.steps[0].error).toMatch(/existent déjà/i)
+
+      expect(await h.prisma.topic.count({ where: { domainId } })).toBe(3) // aucun ajout
+    })
+
     it('regenerateStep refuse TOPIC_GENERATION : il ne fait pas partie du pipeline de génération d’article', async () => {
       const { cookies, domainId } = await setup()
       const created = (await h.gql(`

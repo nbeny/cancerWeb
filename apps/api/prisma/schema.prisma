@@ -202,6 +202,10 @@ model Topic {
   estimatedDifficulty Int?
   estimatedInterest   Int?
   suggestedAngle      String?       @db.Text
+  /// Pourquoi ce sujet a été proposé POUR CE DOMAINE (audience, mots-clés,
+  /// manque à combler). Rempli par la génération IA ; nullable car les sujets
+  /// créés à la main n'en ont pas.
+  rationale           String?       @db.Text
   status              TopicStatus   @default(IDEA)
   generatedByJobId    String?
   article             Article?
@@ -225,6 +229,9 @@ model Article {
   content        String        @db.Text
   renderedHtml   String?       @db.Text
   excerpt        String?
+  /// Reprise de Topic.rationale au moment de la création de l'article, pour
+  /// qu'un relecteur sache pourquoi cet article existe sans remonter au sujet.
+  rationale      String?       @db.Text
   coverImageUrl  String?
   status         ArticleStatus @default(DRAFT)
   currentVersion Int           @default(1)

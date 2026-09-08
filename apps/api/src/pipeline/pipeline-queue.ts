@@ -41,14 +41,22 @@ export interface PipelineQueuePort {
   bind?(handler: (job: PipelineJobData) => Promise<void>): void
 }
 
+/**
+ * Séparateur `-` et non `:` : BullMQ refuse au `add` tout id personnalisé
+ * contenant `:` (séparateur de ses clés Redis ; seule la forme héritée à
+ * trois segments des jobs répétables y échappe encore), et l'exception
+ * « Custom Id cannot contain : » remonte jusqu'à la mutation GraphQL. Sans
+ * ambiguïté : `PipelineRun.id` et `PipelineStep.id` sont des cuid, donc
+ * strictement alphanumériques.
+ */
 function jobId(runId: string, stepId: string): string {
-  return `${runId}:${stepId}`
+  return `${runId}-${stepId}`
 }
 
 /**
  * Adaptateur de production : un `Queue` BullMQ réel, construit par
  * `PipelineModule` à partir de `REDIS_URL`. Le job est identifié par
- * `runId:stepId` (jamais un id aléatoire) : `cancelPendingJob` peut donc
+ * `runId-stepId` (jamais un id aléatoire) : `cancelPendingJob` peut donc
  * retrouver puis retirer le job exact sans registre supplémentaire, et
  * enfiler deux fois le même step est idempotent côté BullMQ (le second
  * `add` avec le même `jobId` est un no-op si le premier existe encore).
