@@ -10,10 +10,10 @@ const ACCEPTED_KEYS = 'fake, cli, http'
  * Sélectionne l'implémentation concrète à brancher sur le jeton AI_PROVIDER
  * selon la valeur de la variable d'environnement du même nom. Extraite de la
  * factory Nest pour rester testable comme une fonction pure, sans bootstrap
- * de module : une valeur absente, inconnue ou pas encore câblée doit
- * toujours échouer bruyamment, jamais retomber sur `fake` en silence — ce
- * qui ferait tourner de la génération factice en production sans que
- * personne ne s'en aperçoive.
+ * de module : une valeur absente, inconnue, ou reconnue mais sans
+ * implémentation (aujourd'hui : http) doit toujours échouer bruyamment,
+ * jamais retomber sur `fake` en silence — ce qui ferait tourner de la
+ * génération factice en production sans que personne ne s'en aperçoive.
  */
 export function selectAIProvider(
   key: AIProviderKey,

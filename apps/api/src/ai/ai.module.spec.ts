@@ -13,7 +13,6 @@ describe('selectAIProvider (fonction pure)', () => {
   })
 
   it("renvoie le CliAgentProvider pour 'cli'", () => {
-    const cli = new CliAgentProvider()
     expect(selectAIProvider('cli', { fake, cli })).toBe(cli)
   })
 
@@ -40,6 +39,14 @@ describe('AiModule (câblage Nest)', () => {
 
     const provider = moduleRef.get(AI_PROVIDER)
     expect(provider).toBeInstanceOf(FakeAIProvider)
+  })
+
+  it('fournit AI_PROVIDER = CliAgentProvider quand AI_PROVIDER=cli', async () => {
+    process.env.AI_PROVIDER = 'cli'
+    const moduleRef = await Test.createTestingModule({ imports: [AiModule] }).compile()
+
+    const provider = moduleRef.get(AI_PROVIDER)
+    expect(provider).toBeInstanceOf(CliAgentProvider)
   })
 
   it('échoue à la compilation du module quand AI_PROVIDER est inconnue', async () => {
