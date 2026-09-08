@@ -511,9 +511,9 @@ describe('pipeline (Task 5 — orchestration)', () => {
       const finalRun = (await h.gql(PIPELINE_RUN, { domainId, id: created.id }, cookies)).body.data.pipelineRun
       expect(finalRun.status).toBe('COMPLETED')
 
-      const titles = (await h.prisma.topic.findMany({ where: { domainId }, select: { title: true } })).map((t) => t.title)
-      expect(titles.filter((t) => t === FAKE_TITLES[0])).toHaveLength(1) // pas de second exemplaire
-      expect(titles).toHaveLength(3) // le sujet rejeté + les deux sujets réellement nouveaux
+      const persisted = await h.prisma.topic.findMany({ where: { domainId } })
+      expect(persisted.filter((t) => t.title === FAKE_TITLES[0])).toHaveLength(1) // pas de second exemplaire
+      expect(persisted).toHaveLength(3) // le sujet rejeté + les deux sujets réellement nouveaux
 
       const step = await h.prisma.pipelineStep.findFirstOrThrow({
         where: { runId: created.id, type: StepType.TOPIC_GENERATION },
@@ -521,6 +521,27 @@ describe('pipeline (Task 5 — orchestration)', () => {
       const output = step.output as { topicIds: string[]; skippedDuplicates: number }
       expect(output.skippedDuplicates).toBe(1)
       expect(output.topicIds).toHaveLength(2)
+
+      // Seul endroit du dépôt où la chaîne complète de la justification est
+      // vérifiée de bout en bout : le prompt réclame `rationale`,
+      // `parseTopics` l'extrait du JSON du modèle, et le pipeline l'écrit
+      // dans la colonne ajoutée par la migration. Les trois maillons peuvent
+      // se contredire sans qu'aucun test unitaire ne s'en aperçoive — d'où
+      // une lecture depuis la BASE, jamais depuis le `TopicDraft`.
+      const generated = persisted.filter((topic) => output.topicIds.includes(topic.id))
+      expect(generated).toHaveLength(2)
+      for (const topic of generated) {
+        expect(topic.rationale?.trim()).toBeTruthy() // ni null (colonne jamais écrite), ni chaîne vide
+      }
+      // Le sujet préexistant a été créé à la main : rien ne doit lui inventer
+      // une justification au passage.
+      expect(persisted.find((t) => t.title === FAKE_TITLES[0])?.rationale).toBeNull()
+
+      // Ancrage sur le CONTENU de la fixture, et pas seulement sur sa
+      // présence : une justification tronquée, réordonnée ou recopiée depuis
+      // un autre champ passerait un simple test de non-vacuité.
+      const nutrition = generated.find((topic) => topic.title === FAKE_TITLES[1])
+      expect(nutrition?.rationale).toMatch(/sites sans base scientifique/)
     })
 
     it('échoue bruyamment quand TOUS les sujets proposés existent déjà, plutôt que de terminer sur zéro sujet créé', async () => {

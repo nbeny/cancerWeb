@@ -71,11 +71,38 @@ Les bénéfices sont réels : des réponses durables, parfois après l'arrêt du
 La recherche actuelle explore des combinaisons entre immunothérapies et traitements plus classiques, ainsi que des biomarqueurs permettant de prédire à l'avance quels patients répondront le mieux. L'objectif est de transformer une approche encore largement empirique en une médecine de précision, où le traitement est choisi en fonction du profil immunitaire propre à chaque tumeur plutôt que de sa seule localisation anatomique.
 `
 
+// Trois sujets au format JSON, la première des trois formes que
+// `parseTopics` essaie (voir sa jsdoc) et celle qu'un modèle produit le plus
+// spontanément. Les trois clés reproduisent EXACTEMENT ce que
+// `prompts/topics.prompt.ts` demande — `title`, `angle`, `rationale` — pour
+// que la fixture documente le contrat nominal plutôt qu'une variante : la
+// tolérance de `parseTopics` aux alias français (`pourquoi`, `why`) est
+// couverte là où elle se joue, dans `parse-topics.spec.ts`.
+//
+// Les justifications sont rédigées comme de vraies justifications
+// éditoriales (audience visée, mots-clés, manque à combler) et non comme des
+// remplissages : c'est la fixture qui sert d'exemple de référence du champ
+// `rationale` dans tout le dépôt.
 const TOPICS_FIXTURE = JSON.stringify(
   [
-    { title: "Comprendre l'immunothérapie moderne", angle: 'vulgarisation, patients nouvellement diagnostiqués' },
-    { title: 'Nutrition et traitements du cancer : ce que dit la science', angle: 'mythes vs preuves' },
-    { title: 'Vivre avec un cancer chronique : organiser le quotidien', angle: 'aidants et patients' },
+    {
+      title: "Comprendre l'immunothérapie moderne",
+      angle: 'vulgarisation, patients nouvellement diagnostiqués',
+      rationale:
+        "Le domaine ne propose aucun contenu d'entrée sur l'immunothérapie alors que c'est l'un de ses mots-clés les plus recherchés. Un patient qui vient d'être diagnostiqué ne trouve aujourd'hui que des sources hospitalières trop techniques pour lui.",
+    },
+    {
+      title: 'Nutrition et traitements du cancer : ce que dit la science',
+      angle: 'mythes vs preuves',
+      rationale:
+        "Les recherches sur l'alimentation pendant un traitement sont massivement captées par des sites sans base scientifique. Opposer mythes et preuves sert directement la mission d'information fiable du domaine sur une audience large.",
+    },
+    {
+      title: 'Vivre avec un cancer chronique : organiser le quotidien',
+      angle: 'aidants et patients',
+      rationale:
+        "Les aidants sont une audience du domaine qu'aucun contenu n'adresse encore directement. Le passage du cancer au statut de maladie chronique déplace le besoin du traitement vers l'organisation quotidienne : c'est le manque le plus visible.",
+    },
   ],
   null,
   2,
