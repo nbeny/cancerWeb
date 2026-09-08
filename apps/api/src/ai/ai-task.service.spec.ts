@@ -1,3 +1,4 @@
+import type { AIProvider } from './ai.types'
 import { FakeAIProvider } from './providers/fake.provider'
 import { AITaskService } from './ai-task.service'
 import { makeDomain, makeTopic } from './test-fixtures'
@@ -28,6 +29,22 @@ describe('AITaskService', () => {
       expect(topics.length).toBeGreaterThan(0)
       expect(topics[0]).toHaveProperty('title')
       expect(typeof topics[0]?.title).toBe('string')
+    })
+
+    it('transmet les titres existants au prompt de génération de sujets', async () => {
+      const captured: string[] = []
+      const provider: AIProvider = {
+        key: 'fake',
+        complete: async (req) => {
+          captured.push(req.prompt)
+          return { text: '[{"title":"Nouveau sujet"}]', raw: '', durationMs: 1 }
+        },
+        health: async () => ({ ok: true }),
+      }
+
+      await new AITaskService(provider).generateTopics(makeDomain(), 3, ['Sujet déjà vu'])
+
+      expect(captured[0]).toContain('Sujet déjà vu')
     })
   })
 
