@@ -64,7 +64,13 @@ COPY --from=build /app/package.json ./package.json
 # jour du CLI pourrait changer en silence. Le binaire natif téléchargé au
 # postinstall fonctionne sous musl (vérifié sur node:22-alpine).
 RUN npm i -g opencode-ai@1.18.25
-RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
+# /workspace est créé ici, dans l'image, alors même qu'un volume nommé
+# (aiworkspace) y sera monté au démarrage : Docker initialise un volume
+# nommé à partir du contenu ET des permissions du chemin de l'image lors
+# de sa toute première création. Sans ce mkdir+chown préalable au `USER
+# app`, le volume serait initialisé root:root et CliAgentProvider ne
+# pourrait pas créer son répertoire par job (mkdir EACCES).
+RUN addgroup -S app && adduser -S app -G app && mkdir -p /workspace && chown -R app:app /app /workspace
 USER app
 WORKDIR /app/apps/api
 EXPOSE 4000
