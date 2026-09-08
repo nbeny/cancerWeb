@@ -46,6 +46,7 @@ type Article {
   latestSeoScore: Int
   metaDescription: String
   publishedAt: DateTime
+  rationale: String
   renderedHtml: String
   robotsFollow: Boolean!
   robotsIndex: Boolean!
@@ -450,6 +451,7 @@ type Topic {
   generatedByJobId: String
   id: ID!
   keywords: [String!]!
+  rationale: String
   searchIntent: SearchIntent
   status: TopicStatus!
   suggestedAngle: String

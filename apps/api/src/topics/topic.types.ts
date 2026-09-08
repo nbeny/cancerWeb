@@ -39,6 +39,7 @@ export class Topic {
   @Field(() => Int, { nullable: true }) estimatedDifficulty?: number | null
   @Field(() => Int, { nullable: true }) estimatedInterest?: number | null
   @Field(() => String, { nullable: true }) suggestedAngle?: string | null
+  @Field(() => String, { nullable: true }) rationale?: string | null
   @Field(() => TopicStatus) status!: TopicStatus
   @Field(() => String, { nullable: true }) generatedByJobId?: string | null
   @Field() createdAt!: Date

@@ -38,6 +38,7 @@ function article(overrides: Partial<ArticleEditorFieldsFragment> = {}): ArticleE
     content: '# Contenu',
     renderedHtml: '<h1>Contenu</h1>',
     excerpt: null,
+    rationale: null,
     coverImageUrl: null,
     seoTitle: null,
     metaDescription: null,
