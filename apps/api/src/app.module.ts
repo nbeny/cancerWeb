@@ -14,6 +14,7 @@ import { TopicsModule } from './topics/topics.module'
 import { ArticlesModule } from './articles/articles.module'
 import { SeoModule } from './seo/seo.module'
 import { PipelineModule } from './pipeline/pipeline.module'
+import { PublicModule } from './public/public.module'
 import { GqlAuthGuard } from './common/guards/gql-auth.guard'
 import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard'
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware'
@@ -44,6 +45,7 @@ import { createPinoHttpOptions } from './common/logging/pino-http-options'
     ArticlesModule,
     SeoModule,
     PipelineModule,
+    PublicModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
