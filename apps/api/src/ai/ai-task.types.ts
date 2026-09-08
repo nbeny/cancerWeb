@@ -32,4 +32,5 @@ export interface TopicDraft {
   description?: string
   keywords?: string[]
   suggestedAngle?: string
+  rationale?: string
 }
