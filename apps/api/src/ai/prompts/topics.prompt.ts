@@ -1,9 +1,25 @@
 import type { Domain } from '@prisma/client'
 import { buildDomainContextBlock } from './domain-context'
 
-export const TOPICS_PROMPT_VERSION = 'TOPICS_V1'
+/**
+ * V2 : la sortie attendue passe de titres Markdown en texte libre à un
+ * tableau JSON à trois clés par sujet (`title`, `angle`, `rationale`), et le
+ * prompt gagne la consigne anti-redite (`existingTitles`). `AIJob.promptVersion`
+ * conserve cette valeur par job : c'est ce qui permet, en historique, de
+ * distinguer les sujets qui pouvaient porter une justification de ceux
+ * générés avant (V1), sans dépendre de la tolérance de `parseTopics`.
+ */
+export const TOPICS_PROMPT_VERSION = 'TOPICS_V2'
 
 /**
+ * Porte le marqueur `[[TOPICS]]` en première ligne, sur lequel `FakeAIProvider`
+ * s'appuie pour choisir sa fixture : ce marqueur ne doit ni bouger de place
+ * ni disparaître, sous peine de casser la CI et la suite d'intégration.
+ *
+ * Sortie attendue : un tableau JSON (voir `../parse-topics.ts`, qui essaie
+ * cette forme en premier et conserve ses replis Markdown comme filet de
+ * sécurité si le modèle désobéit).
+ *
  * `existingTitles` porte TOUS les sujets déjà proposés sur le domaine, quel
  * que soit leur statut — les rejetés compris : un sujet écarté par l'équipe
  * éditoriale ne doit pas revenir à la génération suivante. C'est la première

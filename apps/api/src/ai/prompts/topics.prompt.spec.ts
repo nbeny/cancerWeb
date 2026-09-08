@@ -26,7 +26,7 @@ describe('buildTopicsPrompt', () => {
   })
 
   it('exporte une version de prompt stable', () => {
-    expect(TOPICS_PROMPT_VERSION).toBe('TOPICS_V1')
+    expect(TOPICS_PROMPT_VERSION).toBe('TOPICS_V2')
   })
 })
 
