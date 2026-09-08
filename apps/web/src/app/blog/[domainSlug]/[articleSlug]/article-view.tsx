@@ -1,5 +1,6 @@
 import type { PublicArticleFieldsFragment } from '@cancerweb/graphql'
 import { normaliserTitresCorps } from './article-headings'
+import { STYLE_CORPS_MARKDOWN } from '@/lib/markdown-body-style'
 
 interface Props {
   article: PublicArticleFieldsFragment
@@ -10,29 +11,6 @@ interface Props {
 // concurrents dans la même application se remarquent surtout le jour où l'un
 // des deux est corrigé et pas l'autre.
 const FORMAT_DATE = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-// Faute de `@tailwindcss/typography` dans ce projet (vérifié : ni dépendance,
-// ni `@plugin` dans `globals.css` — les classes `prose` de
-// `components/editor/preview.tsx` n'ont donc aujourd'hui aucun effet), le
-// corps de l'article est habillé par variantes arbitraires. Elles s'appliquent
-// aux balises produites par le rendu Markdown, qu'on ne peut pas décorer une à
-// une : ce HTML est généré côté API, aucune classe ne peut y être posée depuis
-// ici. Ajouter le greffon serait une modification de dépendances hors du
-// périmètre de cette page.
-const STYLE_CORPS = [
-  '[&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:text-slate-900',
-  '[&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-slate-900',
-  '[&_p]:my-4 [&_p]:leading-7',
-  '[&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:my-4 [&_ol]:list-decimal [&_ol]:pl-6 [&_li]:my-1',
-  '[&_a]:text-blue-600 [&_a]:underline [&_a]:underline-offset-2',
-  '[&_blockquote]:my-4 [&_blockquote]:border-l-4 [&_blockquote]:border-slate-200 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-slate-600',
-  '[&_code]:rounded [&_code]:bg-slate-100 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.9em]',
-  '[&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-slate-900 [&_pre]:p-4 [&_pre]:text-sm [&_pre]:text-slate-100',
-  '[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-inherit',
-  '[&_img]:my-4 [&_img]:rounded-md',
-  '[&_table]:my-4 [&_table]:w-full [&_table]:text-left [&_th]:border-b [&_th]:border-slate-200 [&_th]:py-2 [&_td]:border-b [&_td]:border-slate-100 [&_td]:py-2',
-  '[&_hr]:my-8 [&_hr]:border-slate-200',
-].join(' ')
 
 /**
  * Corps de la page d'article public. Purement présentationnel : il ne lit ni
@@ -99,7 +77,7 @@ export function ArticleView({ article }: Props) {
           d'innocuité. Voir sa jsdoc. */}
       {article.renderedHtml && (
         <div
-          className={`mt-8 text-slate-800 ${STYLE_CORPS}`}
+          className={`mt-8 text-slate-800 ${STYLE_CORPS_MARKDOWN}`}
           dangerouslySetInnerHTML={{ __html: normaliserTitresCorps(article.renderedHtml) }}
         />
       )}
