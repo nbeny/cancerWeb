@@ -1,0 +1,36 @@
+fragment PublicArticleFields on PublicArticle {
+  id
+  slug
+  title
+  excerpt
+  renderedHtml
+  coverImageUrl
+  wordCount
+  publishedAt
+  seoTitle
+  metaDescription
+  canonicalUrl
+  robotsIndex
+  robotsFollow
+}
+
+query PublicArticles($domainSlug: String!, $page: PageInput) {
+  publicArticles(domainSlug: $domainSlug, page: $page) {
+    items { ...PublicArticleFields }
+    totalCount
+  }
+}
+
+query PublicArticle($domainSlug: String!, $slug: String!) {
+  publicArticle(domainSlug: $domainSlug, slug: $slug) { ...PublicArticleFields }
+}
+
+query PublicDomain($slug: String!) {
+  publicDomain(slug: $slug) {
+    id
+    slug
+    name
+    description
+    language
+  }
+}
