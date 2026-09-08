@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { unstable_cache } from 'next/cache'
 import type { PublicArticleFieldsFragment } from '@cancerweb/graphql'
 import { serverSdk } from '@/lib/graphql-client'
+import { PLANCHER_REVALIDATION_S } from '../blog-cache'
 
 /**
  * Étiquette de cache d'UN article public, à passer à `revalidateTag` pour
@@ -75,7 +76,9 @@ export const chargerArticle = cache(async function chargerArticle(
     // aucun) : sans ces deux parties, tous les articles partageraient la même
     // entrée et le premier chargé serait servi à la place de tous les autres.
     ['article-public', domainSlug, slug],
-    { tags: [etiquetteArticle(domainSlug, slug)] },
+    // `revalidate` : filet de sécurité en cas de webhook manqué, identique
+    // aux deux autres chargeurs — voir la jsdoc de `PLANCHER_REVALIDATION_S`.
+    { tags: [etiquetteArticle(domainSlug, slug)], revalidate: PLANCHER_REVALIDATION_S },
   )
   return lecture()
 })

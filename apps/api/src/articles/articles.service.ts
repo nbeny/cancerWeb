@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { Article, ArticleStatus, ArticleVersion, DomainMember, DomainRole, Prisma, TopicStatus } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { slugify } from '../common/slug'
@@ -6,7 +6,8 @@ import { parse, render, countWords } from '../markdown'
 import { ArticleFilter, ArticleSort, CreateArticleInput, UpdateArticleInput } from './article.types'
 import { PageInput } from '../common/dto/page.input'
 import { VersionsService } from './versions.service'
-import { canTransition } from './transitions'
+import { RevalidationService } from './revalidation.service'
+import { affectsPublicBlog, canTransition } from './transitions'
 import { queryArticles } from './article-query'
 import { ARTICLE_CHANGE_NOTE_MAX_LENGTH } from '@cancerweb/validation'
 
@@ -17,9 +18,12 @@ interface RenderedContent {
 
 @Injectable()
 export class ArticlesService {
+  private readonly logger = new Logger(ArticlesService.name)
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly versions: VersionsService,
+    private readonly revalidation: RevalidationService,
   ) {}
 
   async create(userId: string, domainId: string, input: CreateArticleInput): Promise<Article> {
@@ -214,6 +218,11 @@ export class ArticlesService {
    * (`publishedAt`, `scheduledAt`, ...) et peut lever une erreur (ex. date
    * de programmation passée) — dans ce cas la transaction n'a pas encore
    * commencé, rien n'est écrit.
+   *
+   * C'est aussi l'ENTONNOIR UNIQUE des changements de statut, donc le seul
+   * endroit où accrocher la notification au blog public : les cinq mutations
+   * de transition passent toutes par ici, et une sixième ajoutée demain en
+   * héritera sans que personne n'ait à y penser (Tâche 7).
    */
   private async transitionArticle(
     userId: string,
@@ -234,7 +243,7 @@ export class ArticlesService {
 
     const extra = mutateData?.(article) ?? {}
 
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.article.update({ where: { id: articleId }, data: { status: to, ...extra } })
       const snapshot = await this.versions.snapshot(tx, articleId, userId, updated.title, updated.content, action)
       // `versions.snapshot` a mis à jour `currentVersion` en base après cette
@@ -242,6 +251,55 @@ export class ArticlesService {
       // valeur périmée.
       return { ...updated, currentVersion: snapshot.version }
     })
+
+    // APRÈS le commit, jamais dedans : prévenir le front d'une publication
+    // que Postgres annulerait ensuite lui ferait purger un cache pour
+    // recharger... l'ancienne version. Un appel réseau dans une transaction
+    // interactive en allongerait de surcroît la durée de vie, donc celle des
+    // verrous pris sur la ligne.
+    if (affectsPublicBlog(article.status, to)) {
+      await this.notifyPublicBlog(article.domainId, result.slug)
+    }
+
+    return result
+  }
+
+  /**
+   * Notifie le blog public qu'un article y est apparu ou en a disparu.
+   *
+   * N'ÉCHOUE JAMAIS, par construction : un blog momentanément périmé est un
+   * incident mineur — le plancher de revalidation d'une heure posé sur les
+   * chargeurs côté web finit par le rattraper tout seul — là où une
+   * publication refusée parce que le front ne répond pas bloque le travail
+   * éditorial. L'échec est journalisé en `warn` (pas en `error` : rien n'est
+   * cassé côté données) et s'arrête ici.
+   *
+   * Une requête supplémentaire est nécessaire, et assumée : les étiquettes de
+   * cache sont indexées par SLUG de domaine (`article-public:<domaine>:<slug>`)
+   * alors que l'article ne porte que `domainId`, et ni `findForUser` ni
+   * `requireMember` ne chargent le domaine. Elle n'est PAS sur un chemin
+   * chaud : `affectsPublicBlog` la réserve aux transitions qui touchent
+   * réellement PUBLISHED — un geste humain, quelques fois par jour. La
+   * charger systématiquement dans `findForUser` (via un `include`) aurait
+   * imposé cette jointure à toutes les lectures d'article du back-office pour
+   * n'en servir qu'une poignée.
+   */
+  private async notifyPublicBlog(domainId: string, articleSlug: string): Promise<void> {
+    try {
+      const domain = await this.prisma.domain.findUnique({ where: { id: domainId }, select: { slug: true } })
+      // Inatteignable tant que la clé étrangère `Article.domainId` tient. Si
+      // elle ne tenait plus, un `domain!.slug` lèverait un `TypeError` que le
+      // `catch` ci-dessous maquillerait en simple avertissement de webhook :
+      // on préfère le dire pour ce que c'est.
+      if (!domain) throw new Error(`Domaine ${domainId} introuvable`)
+      await this.revalidation.notifyArticleChange(domain.slug, articleSlug)
+    } catch (error) {
+      this.logger.warn(
+        `Revalidation du blog public échouée pour l'article ${articleSlug} (domaine ${domainId}) : ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      )
+    }
   }
 
   submitForReview(userId: string, domainId: string, articleId: string): Promise<Article> {

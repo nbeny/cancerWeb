@@ -22,6 +22,34 @@ const TAILLE_PAGE = 10
 export const PAGE_MAX = 100_000
 
 /**
+ * Plancher de revalidation, en secondes, appliqué aux TROIS chargeurs publics
+ * (`chargerDomainePublic`, `chargerSommaire` ici, `chargerArticle` dans
+ * `[articleSlug]/article-cache.ts`).
+ *
+ * Ce n'est PAS le mécanisme de fraîcheur principal : celui-ci reste le webhook
+ * `/api/revalidate`, appelé par l'API à chaque publication, dépublication ou
+ * archivage, qui invalide les étiquettes concernées en quelques millisecondes.
+ * C'est un FILET DE SÉCURITÉ pour le jour où ce webhook ne part pas — API
+ * incapable de joindre le front, `REVALIDATE_SECRET` désaccordé entre les deux
+ * services, `WEB_INTERNAL_URL` oubliée dans un déploiement.
+ *
+ * Sans plancher, une entrée `unstable_cache` vit jusqu'à son invalidation
+ * explicite : un webhook manqué ne rend pas le blog « un peu périmé », il le
+ * FIGE définitivement, et silencieusement — aucune erreur, aucune page en
+ * défaut, juste un article publié que personne ne voit jamais apparaître.
+ * Une heure est le compromis retenu : assez long pour que le cache garde tout
+ * son intérêt en régime normal (le webhook, lui, agit dans la seconde), assez
+ * court pour qu'une panne de notification se rattrape d'elle-même dans la
+ * journée éditoriale plutôt qu'à la prochaine reconstruction.
+ *
+ * Exporté et partagé plutôt que recopié : les trois chargeurs servent la même
+ * page (le layout charge le domaine, la page son sommaire ou son article) et
+ * des durées divergentes produiraient un blog incohérent avec lui-même — un
+ * article visible dont le sommaire ignore encore l'existence.
+ */
+export const PLANCHER_REVALIDATION_S = 3600
+
+/**
  * Étiquette de cache du domaine public, à passer à `revalidateTag` (Tâche 7 :
  * webhook de revalidation).
  *
@@ -95,7 +123,7 @@ export const chargerDomainePublic = cache(async function chargerDomainePublic(
     // aucun) : sans `domainSlug`, tous les blogs partageraient une entrée et
     // le premier chargé serait servi à la place de tous les autres.
     ['domaine-public', domainSlug],
-    { tags: [etiquetteDomaine(domainSlug)] },
+    { tags: [etiquetteDomaine(domainSlug)], revalidate: PLANCHER_REVALIDATION_S },
   )
   return lecture()
 })
@@ -131,7 +159,7 @@ export const chargerSommaire = cache(async function chargerSommaire(
     // `unstable_cache` ignore. Sans elle, `/page/2` servirait le contenu de
     // l'accueil.
     ['sommaire-public', domainSlug, String(page)],
-    { tags: [etiquetteSommaire(domainSlug)] },
+    { tags: [etiquetteSommaire(domainSlug)], revalidate: PLANCHER_REVALIDATION_S },
   )
   return lecture()
 })

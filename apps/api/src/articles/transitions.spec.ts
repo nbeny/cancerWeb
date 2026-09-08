@@ -1,5 +1,5 @@
 import { ArticleStatus, DomainRole } from '@prisma/client'
-import { canTransition } from './transitions'
+import { affectsPublicBlog, canTransition } from './transitions'
 
 const STATUSES = Object.values(ArticleStatus)
 const ROLES = Object.values(DomainRole)
@@ -120,5 +120,39 @@ describe('canTransition — cas explicites', () => {
     expect(inexistante.reason).not.toEqual(roleInsuffisant.reason)
     expect(inexistante.reason.toLowerCase()).toMatch(/inexistant|n'existe pas/)
     expect(roleInsuffisant.reason.toLowerCase()).toMatch(/rôle|role/)
+  })
+})
+
+describe('affectsPublicBlog', () => {
+  // La visibilité publique se réduit à `status = PUBLISHED` (voir
+  // `PublicService.publishedWhere`) : le prédicat doit donc être vrai
+  // exactement pour les transitions qui franchissent cette frontière, dans
+  // un sens comme dans l'autre.
+  it('est vrai exactement pour les couples qui touchent PUBLISHED (36 couples)', () => {
+    for (const from of STATUSES) {
+      for (const to of STATUSES) {
+        const attendu = from === ArticleStatus.PUBLISHED || to === ArticleStatus.PUBLISHED
+        expect({ from, to, resultat: affectsPublicBlog(from, to) }).toEqual({ from, to, resultat: attendu })
+      }
+    }
+  })
+
+  it('couvre la publication ET le retrait, pas seulement la publication', () => {
+    // Publication : l'article apparaît, et le domaine bascule de 404 à blog vivant.
+    expect(affectsPublicBlog(ArticleStatus.APPROVED, ArticleStatus.PUBLISHED)).toBe(true)
+    expect(affectsPublicBlog(ArticleStatus.SCHEDULED, ArticleStatus.PUBLISHED)).toBe(true)
+    // Retrait : une page retirée doit disparaître aussi vite qu'elle est apparue.
+    expect(affectsPublicBlog(ArticleStatus.PUBLISHED, ArticleStatus.ARCHIVED)).toBe(true)
+    // Et resterait vrai pour une dépublication vers DRAFT, si elle était
+    // ajoutée un jour à `TRANSITIONS` — c'est tout l'intérêt d'une règle
+    // formulée sur les statuts plutôt que sur une liste de couples.
+    expect(affectsPublicBlog(ArticleStatus.PUBLISHED, ArticleStatus.DRAFT)).toBe(true)
+  })
+
+  it('ignore les transitions internes au back-office', () => {
+    expect(affectsPublicBlog(ArticleStatus.DRAFT, ArticleStatus.REVIEW)).toBe(false)
+    expect(affectsPublicBlog(ArticleStatus.REVIEW, ArticleStatus.APPROVED)).toBe(false)
+    expect(affectsPublicBlog(ArticleStatus.REVIEW, ArticleStatus.DRAFT)).toBe(false)
+    expect(affectsPublicBlog(ArticleStatus.APPROVED, ArticleStatus.SCHEDULED)).toBe(false)
   })
 })

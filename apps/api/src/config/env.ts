@@ -38,6 +38,23 @@ const schema = z
     // d'intégration n'ouvre jamais de connexion Redis (voir
     // `pipeline-queue.ts`).
     PIPELINE_QUEUE_DRIVER: z.enum(['bullmq', 'inline']).default('bullmq'),
+    // --- Revalidation du blog public (Tâche 7) ---
+    // Racine du front Next.js JOIGNABLE DEPUIS L'API (`http://web:3001` dans
+    // le réseau Docker), pas `PUBLIC_ORIGIN` : cette dernière est l'URL vue
+    // par le navigateur (`http://localhost:3000`, servie par Caddy), qui
+    // depuis le conteneur `api` ne désigne pas le front mais l'API elle-même.
+    //
+    // Les deux sont OPTIONNELLES, contrairement à `AI_PROVIDER` : une API qui
+    // refuserait de démarrer faute de savoir prévenir le front rendrait le
+    // back-office indisponible pour un service purement cosmétique. Non
+    // renseignées, la notification est ignorée avec un avertissement au
+    // journal (voir `RevalidationService`), et le plancher de revalidation
+    // d'une heure posé côté web garde le blog frais en attendant.
+    WEB_INTERNAL_URL: z.string().url().optional(),
+    // Partagé avec le service `web` (voir docker-compose.yml) : c'est le seul
+    // élément qui distingue une notification légitime de l'API d'un appel
+    // arbitraire au webhook, joignable depuis tout le réseau du conteneur.
+    REVALIDATE_SECRET: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') return
@@ -49,6 +66,19 @@ const schema = z
           message: `${key} utilise encore la valeur d'exemple de .env.example : impossible de démarrer en production avec ce secret`,
         })
       }
+    }
+    // Même règle pour le secret du webhook de revalidation, à ceci près qu'il
+    // est optionnel : on ne le contrôle que s'il est renseigné. Le laisser à
+    // la valeur d'exemple en production reviendrait à publier le secret dans
+    // le dépôt, donc à laisser n'importe qui purger le cache du blog à
+    // volonté — une amplification de charge triviale vers l'API.
+    if (env.REVALIDATE_SECRET?.startsWith(PLACEHOLDER_SECRET_PREFIX)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['REVALIDATE_SECRET'],
+        message:
+          "REVALIDATE_SECRET utilise encore la valeur d'exemple de .env.example : impossible de démarrer en production avec ce secret",
+      })
     }
   })
 
