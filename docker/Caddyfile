@@ -12,6 +12,18 @@
 :3000 {
 	encode gzip
 
+	# Le webhook de revalidation du blog n'est appelé QUE par l'API, de
+	# conteneur à conteneur (WEB_INTERNAL_URL=http://web:3001), jamais à travers
+	# ce proxy. Or le `handle` de repli ci-dessous relaie tout le reste vers
+	# web:3001 : sans ce blocage, `/api/revalidate` serait exposé à l'internet
+	# public, le secret partagé étant alors l'unique rempart. Le fermer ici ne
+	# coûte aucune fonctionnalité et supprime toute la surface d'attaque
+	# externe. 404 plutôt que 403 : ne pas confirmer l'existence de la route.
+	@revalidate path /api/revalidate
+	handle @revalidate {
+		respond 404
+	}
+
 	@api path /graphql* /health /uploads/*
 	handle @api {
 		reverse_proxy api:4000

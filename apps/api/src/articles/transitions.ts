@@ -71,3 +71,33 @@ export function canTransition(from: ArticleStatus, to: ArticleStatus, role: Doma
 export function transitionAction(from: ArticleStatus, to: ArticleStatus): string | undefined {
   return TRANSITIONS.find((t) => t.from === from && t.to === to)?.action
 }
+
+/**
+ * La transition `from → to` change-t-elle ce que voit un lecteur du blog
+ * public ? Décide si le webhook de revalidation doit être appelé (Tâche 7 du
+ * lot « blog public »).
+ *
+ * Formulée sur les STATUTS et non sur les actions du workflow : c'est
+ * `PublicService` qui définit la visibilité publique, et sa seule condition
+ * est `status = PUBLISHED` (voir `publishedWhere`). Toute transition qui
+ * franchit cette frontière, dans un sens comme dans l'autre, change donc le
+ * blog — et aucune autre.
+ *
+ * Les deux sens comptent, pas seulement l'entrée :
+ *
+ *   - vers PUBLISHED (`APPROVED → PUBLISHED`, `SCHEDULED → PUBLISHED`) :
+ *     l'article apparaît, et c'est aussi le moment où un domaine jusque-là
+ *     invisible bascule de 404 à blog vivant ;
+ *   - depuis PUBLISHED (`PUBLISHED → ARCHIVED` aujourd'hui, une éventuelle
+ *     dépublication vers DRAFT demain) : une page retirée doit disparaître
+ *     aussi vite qu'elle est apparue — la laisser en cache la maintiendrait
+ *     lisible, et indexable, jusqu'au plancher de revalidation.
+ *
+ * Écrire `to === PUBLISHED || from === PUBLISHED` plutôt qu'énumérer les
+ * couples concernés est délibéré : c'est la formulation qui reste juste si
+ * une transition est ajoutée à `TRANSITIONS` sans que personne ne pense à ce
+ * fichier-ci.
+ */
+export function affectsPublicBlog(from: ArticleStatus, to: ArticleStatus): boolean {
+  return from === ArticleStatus.PUBLISHED || to === ArticleStatus.PUBLISHED
+}

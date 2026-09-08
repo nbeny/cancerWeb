@@ -326,6 +326,35 @@ type PipelineStep {
   type: StepType!
 }
 
+type PublicArticle {
+  canonicalUrl: String
+  coverImageUrl: String
+  excerpt: String
+  id: ID!
+  metaDescription: String
+  publishedAt: DateTime
+  renderedHtml: String
+  robotsFollow: Boolean!
+  robotsIndex: Boolean!
+  seoTitle: String
+  slug: String!
+  title: String!
+  wordCount: Int!
+}
+
+type PublicArticleConnection {
+  items: [PublicArticle!]!
+  totalCount: Int!
+}
+
+type PublicDomain {
+  description: String
+  id: ID!
+  language: String!
+  name: String!
+  slug: String!
+}
+
 type Query {
   aiJobs(domainId: ID!, filter: AIJobFilter, page: PageInput): AIJobConnection!
   article(domainId: ID!, id: ID!): Article!
@@ -339,6 +368,9 @@ type Query {
   pipelineQueue(domainId: ID!): [QueuedRun!]!
   pipelineRun(domainId: ID!, id: ID!): PipelineRun!
   pipelineRuns(domainId: ID!, filter: PipelineRunFilter, page: PageInput): PipelineRunConnection!
+  publicArticle(domainSlug: String!, slug: String!): PublicArticle!
+  publicArticles(domainSlug: String!, page: PageInput): PublicArticleConnection!
+  publicDomain(slug: String!): PublicDomain!
   seoReports(articleId: ID!, domainId: ID!, page: PageInput): SeoReportConnection!
 
   """Horodatage serveur — sonde de disponibilité."""

@@ -67,6 +67,13 @@ services:
     environment:
       DATABASE_URL: postgresql://cancerweb:cancerweb@postgres:5432/cancerweb?schema=public
       REDIS_URL: redis://redis:6379
+      # Webhook de revalidation du blog public : l'API prévient `web` à chaque
+      # publication/archivage (voir RevalidationService). Redit ici, comme
+      # DATABASE_URL et REDIS_URL, parce que la valeur de .env vise l'hôte et
+      # non le réseau du conteneur — `web` n'a de sens qu'ici. Le secret, lui,
+      # vient bien de .env (env_file ci-dessus) : il doit être IDENTIQUE des
+      # deux côtés, donc défini à un seul endroit.
+      WEB_INTERNAL_URL: http://web:3001
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -108,12 +115,28 @@ services:
     # l'usurpation de n'importe quel compte. On liste explicitement les
     # seules variables dont le démarrage a besoin, constatées en lisant le
     # code (API_INTERNAL_URL dans src/lib/graphql-client.ts et
-    # src/app/api/auth/refresh/route.ts ; NODE_ENV=production est déjà posé
-    # par docker/web.Dockerfile, répété ici pour rendre la dépendance
-    # explicite plutôt qu'implicite).
+    # src/app/api/auth/refresh/route.ts ; PUBLIC_ROOT_HOST dans src/proxy.ts,
+    # qui s'en sert pour décider si un Host désigne le back-office ou le blog
+    # public d'un domaine éditorial ; REVALIDATE_SECRET dans
+    # src/app/api/revalidate/route.ts, le webhook que l'API appelle pour
+    # invalider le cache du blog — sans elle ce webhook refuse TOUT appel, y
+    # compris légitime ; NODE_ENV=production est déjà posé par
+    # docker/web.Dockerfile, répété ici pour rendre la dépendance explicite
+    # plutôt qu'implicite).
+    #
+    # `${REVALIDATE_SECRET:-}` : interpolé par Compose depuis le .env de la
+    # racine, sans pour autant charger tout le fichier dans le conteneur — le
+    # secret DOIT être le même que celui du service `api`, et le dupliquer en
+    # dur ici garantirait qu'un jour l'un des deux change sans l'autre. Le
+    # repli vide plutôt qu'un `:?` bloquant : une variable oubliée ne doit pas
+    # rendre TOUTE la pile indémarrable pour une fonctionnalité de cache — le
+    # webhook répond alors 503 en le disant au journal, et le plancher de
+    # revalidation d'une heure prend le relais.
     environment:
       NODE_ENV: production
       API_INTERNAL_URL: http://api:4000/graphql
+      PUBLIC_ROOT_HOST: localhost
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
     depends_on:
       api: { condition: service_healthy }
 

@@ -511,6 +511,31 @@ export type RegenerateStepMutationVariables = Exact<{
 
 export type RegenerateStepMutation = { regenerateStep: { id: string, domainId: string, topicId: string | null, articleId: string | null, triggeredBy: string | null, status: RunStatus, currentStep: StepType | null, startedAt: string | null, completedAt: string | null, createdAt: string, steps: Array<{ id: string, runId: string, type: StepType, order: number, status: StepStatus, attempt: number, error: string | null, heartbeatAt: string | null, startedAt: string | null, completedAt: string | null, jobs: Array<{ id: string, type: string, provider: string, model: string, promptVersion: string, status: JobStatus, error: string | null, durationMs: number | null, correlationId: string | null, startedAt: string | null, completedAt: string | null, createdAt: string }> }> } };
 
+export type PublicArticleFieldsFragment = { id: string, slug: string, title: string, excerpt: string | null, renderedHtml: string | null, coverImageUrl: string | null, wordCount: number, publishedAt: string | null, seoTitle: string | null, metaDescription: string | null, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean };
+
+export type PublicArticlesQueryVariables = Exact<{
+  domainSlug: string;
+  page?: PageInput | null | undefined;
+}>;
+
+
+export type PublicArticlesQuery = { publicArticles: { totalCount: number, items: Array<{ id: string, slug: string, title: string, excerpt: string | null, renderedHtml: string | null, coverImageUrl: string | null, wordCount: number, publishedAt: string | null, seoTitle: string | null, metaDescription: string | null, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean }> } };
+
+export type PublicArticleQueryVariables = Exact<{
+  domainSlug: string;
+  slug: string;
+}>;
+
+
+export type PublicArticleQuery = { publicArticle: { id: string, slug: string, title: string, excerpt: string | null, renderedHtml: string | null, coverImageUrl: string | null, wordCount: number, publishedAt: string | null, seoTitle: string | null, metaDescription: string | null, canonicalUrl: string | null, robotsIndex: boolean, robotsFollow: boolean } };
+
+export type PublicDomainQueryVariables = Exact<{
+  slug: string;
+}>;
+
+
+export type PublicDomainQuery = { publicDomain: { id: string, slug: string, name: string, description: string | null, language: string } };
+
 export type SeoReportFieldsFragment = { id: string, articleId: string, score: number, cappedBy: Array<string>, computedAt: string, metrics: unknown, issues: Array<{ code: string, severity: string, message: string, field: string | null }> };
 
 export type AnalyzeSeoMutationVariables = Exact<{
@@ -808,6 +833,23 @@ export const PipelineRunFieldsFragmentDoc = gql`
   }
 }
     ${PipelineStepFieldsFragmentDoc}`;
+export const PublicArticleFieldsFragmentDoc = gql`
+    fragment PublicArticleFields on PublicArticle {
+  id
+  slug
+  title
+  excerpt
+  renderedHtml
+  coverImageUrl
+  wordCount
+  publishedAt
+  seoTitle
+  metaDescription
+  canonicalUrl
+  robotsIndex
+  robotsFollow
+}
+    `;
 export const SeoReportFieldsFragmentDoc = gql`
     fragment SeoReportFields on SeoReport {
   id
@@ -1159,6 +1201,34 @@ export const RegenerateStepDocument = gql`
   }
 }
     ${PipelineRunFieldsFragmentDoc}`;
+export const PublicArticlesDocument = gql`
+    query PublicArticles($domainSlug: String!, $page: PageInput) {
+  publicArticles(domainSlug: $domainSlug, page: $page) {
+    items {
+      ...PublicArticleFields
+    }
+    totalCount
+  }
+}
+    ${PublicArticleFieldsFragmentDoc}`;
+export const PublicArticleDocument = gql`
+    query PublicArticle($domainSlug: String!, $slug: String!) {
+  publicArticle(domainSlug: $domainSlug, slug: $slug) {
+    ...PublicArticleFields
+  }
+}
+    ${PublicArticleFieldsFragmentDoc}`;
+export const PublicDomainDocument = gql`
+    query PublicDomain($slug: String!) {
+  publicDomain(slug: $slug) {
+    id
+    slug
+    name
+    description
+    language
+  }
+}
+    `;
 export const AnalyzeSeoDocument = gql`
     mutation AnalyzeSeo($domainId: ID!, $articleId: ID!) {
   analyzeSeo(domainId: $domainId, articleId: $articleId) {
@@ -1310,6 +1380,9 @@ const GenerateArticleDocumentString = print(GenerateArticleDocument);
 const GenerateTopicsDocumentString = print(GenerateTopicsDocument);
 const CancelPipelineRunDocumentString = print(CancelPipelineRunDocument);
 const RegenerateStepDocumentString = print(RegenerateStepDocument);
+const PublicArticlesDocumentString = print(PublicArticlesDocument);
+const PublicArticleDocumentString = print(PublicArticleDocument);
+const PublicDomainDocumentString = print(PublicDomainDocument);
 const AnalyzeSeoDocumentString = print(AnalyzeSeoDocument);
 const SeoReportsDocumentString = print(SeoReportsDocument);
 const CategoriesDocumentString = print(CategoriesDocument);
@@ -1429,6 +1502,15 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     RegenerateStep(variables: RegenerateStepMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: RegenerateStepMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<RegenerateStepMutation>(RegenerateStepDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RegenerateStep', 'mutation', variables);
+    },
+    PublicArticles(variables: PublicArticlesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PublicArticlesQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PublicArticlesQuery>(PublicArticlesDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PublicArticles', 'query', variables);
+    },
+    PublicArticle(variables: PublicArticleQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PublicArticleQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PublicArticleQuery>(PublicArticleDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PublicArticle', 'query', variables);
+    },
+    PublicDomain(variables: PublicDomainQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: PublicDomainQuery; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
+        return withWrapper((wrappedRequestHeaders) => client.rawRequest<PublicDomainQuery>(PublicDomainDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PublicDomain', 'query', variables);
     },
     AnalyzeSeo(variables: AnalyzeSeoMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<{ data: AnalyzeSeoMutation; errors?: GraphQLError[]; extensions?: any; headers: Headers; status: number; }> {
         return withWrapper((wrappedRequestHeaders) => client.rawRequest<AnalyzeSeoMutation>(AnalyzeSeoDocumentString, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'AnalyzeSeo', 'mutation', variables);

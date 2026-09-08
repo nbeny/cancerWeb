@@ -62,6 +62,35 @@ describe('parseEnv', () => {
     ).not.toThrow()
   })
 
+  it('accepte une configuration sans WEB_INTERNAL_URL ni REVALIDATE_SECRET', () => {
+    // Volontairement optionnelles : une API qui refuserait de démarrer faute
+    // de savoir prévenir le front rendrait le back-office indisponible pour
+    // un service purement cosmétique (voir la jsdoc dans env.ts).
+    const env = parseEnv(valid)
+    expect(env.WEB_INTERNAL_URL).toBeUndefined()
+    expect(env.REVALIDATE_SECRET).toBeUndefined()
+  })
+
+  it('rejette un REVALIDATE_SECRET placeholder "change-me-" en production', () => {
+    expect(() =>
+      parseEnv({
+        ...valid,
+        NODE_ENV: 'production',
+        JWT_ACCESS_SECRET: 'x'.repeat(32),
+        JWT_REFRESH_SECRET: 'y'.repeat(32),
+        REVALIDATE_SECRET: 'change-me-revalidate-secret',
+      }),
+    ).toThrow(/REVALIDATE_SECRET/)
+  })
+
+  it('rejette une WEB_INTERNAL_URL qui n’est pas une URL', () => {
+    // Note : `web:3001` PASSE cette validation — c'est une URL WHATWG valide
+    // (schéma `web:`, chemin opaque `3001`), comme le sont `postgresql://...`
+    // et `redis://...` validés de la même façon juste au-dessus. Le contrôle
+    // porte sur la forme, pas sur le protocole.
+    expect(() => parseEnv({ ...valid, WEB_INTERNAL_URL: 'http://web :3001' })).toThrow(/WEB_INTERNAL_URL/)
+  })
+
   it.each(['fake', 'cli', 'http'])("accepte AI_PROVIDER=%s", (provider) => {
     expect(() => parseEnv({ ...valid, AI_PROVIDER: provider })).not.toThrow()
   })
