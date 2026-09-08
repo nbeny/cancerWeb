@@ -13,6 +13,7 @@ import type { Outline } from '../ai/ai-task.types'
 import { OUTLINE_PROMPT_VERSION } from '../ai/prompts/outline.prompt'
 import { DRAFT_PROMPT_VERSION } from '../ai/prompts/draft.prompt'
 import { TOPICS_PROMPT_VERSION } from '../ai/prompts/topics.prompt'
+import { isDuplicateTitle } from '../topics/topic-similarity'
 import { getStepDefinition, STEP_DEFINITIONS } from './pipeline-steps'
 import type { StepHandler } from './step-handler'
 import type { PipelineRunWithSteps } from './step-handler'
@@ -395,14 +396,60 @@ export class PipelineService implements OnModuleInit {
    * qui permet à l'interface de remonter du sujet à l'appel IA qui l'a
    * produit. Comme `runAiStep`, mais sans article ni instantané réversible à
    * gérer (rien n'existe encore à protéger).
+   *
+   * Deux barrières successives contre la redite (Task 8) : les titres déjà
+   * présents sur le domaine sont transmis au prompt (« ne repropose pas
+   * ceux-ci »), PUIS le résultat est refiltré ici par `isDuplicateTitle`.
+   * La seconde n'est pas redondante : la première n'est qu'une consigne, et
+   * un modèle peut toujours reformuler un sujet existant au lieu de
+   * l'écarter. Seul le filtre côté pipeline est une garantie.
    */
-  private async runTopicGenerationStep(run: PipelineRunWithSteps, step: PipelineStep, correlationId: string): Promise<{ topicIds: string[] }> {
+  private async runTopicGenerationStep(
+    run: PipelineRunWithSteps,
+    step: PipelineStep,
+    correlationId: string,
+  ): Promise<{ topicIds: string[]; skippedDuplicates: number }> {
     const { count } = step.input as { count: number }
 
+    // Tous statuts confondus, rejetés compris : un sujet écarté par l'équipe
+    // éditoriale ne doit pas revenir à la génération suivante — le
+    // reproposer reviendrait à lui redemander la même décision.
+    const existingTitles = (
+      await this.prisma.topic.findMany({ where: { domainId: run.domainId }, select: { title: true } })
+    ).map((topic) => topic.title)
+
     const start = Date.now()
-    const drafts = await this.aiTasks.generateTopics(run.domain, count, correlationId)
+    const drafts = await this.aiTasks.generateTopics(run.domain, count, existingTitles, correlationId)
     const durationMs = Date.now() - start
-    const toPersist = drafts.slice(0, count)
+
+    // `seen` grandit au fil des sujets acceptés : le filtre porte aussi sur
+    // les sujets retenus au cours de CETTE génération, rien n'empêchant le
+    // modèle de se répéter à l'intérieur d'une seule réponse. Le `break` sur
+    // `count` remplace l'ancien `slice(0, count)` : la borne doit compter les
+    // sujets réellement retenus, sinon un doublon en tête de liste
+    // consommerait une place et ferait rendre moins de sujets que demandé
+    // alors que le modèle en avait proposé assez.
+    const seen = [...existingTitles]
+    const toPersist: typeof drafts = []
+    let skippedDuplicates = 0
+    for (const draft of drafts) {
+      if (toPersist.length >= count) break
+      if (isDuplicateTitle(draft.title, seen)) {
+        skippedDuplicates++
+        continue
+      }
+      toPersist.push(draft)
+      seen.push(draft.title)
+    }
+
+    // Échouer bruyamment plutôt que de terminer COMPLETED sur zéro sujet
+    // créé : un run « réussi » sans le moindre résultat est indiscernable
+    // d'un modèle muet, et laisserait l'utilisateur sans explication.
+    if (toPersist.length === 0) {
+      throw new Error(
+        `Étape TOPIC_GENERATION : les ${drafts.length} sujets proposés existent déjà sur ce domaine. Aucun sujet nouveau à enregistrer.`,
+      )
+    }
 
     const job = await this.prisma.aIJob.create({
       data: {
@@ -413,7 +460,10 @@ export class PipelineService implements OnModuleInit {
         promptVersion: PROMPT_VERSIONS[step.type] ?? 'unknown',
         status: JobStatus.COMPLETED,
         input: toJson({ count }),
-        output: toJson(toPersist),
+        // Le nombre de rejets est tracé dans l'`AIJob` autant que dans la
+        // sortie de l'étape : un `output` à deux sujets pour un `count` de
+        // trois serait autrement illisible à la relecture d'un job.
+        output: toJson({ topics: toPersist, skippedDuplicates }),
         rawOutput: truncateRaw(JSON.stringify(toPersist)),
         durationMs,
         correlationId,
@@ -431,13 +481,17 @@ export class PipelineService implements OnModuleInit {
             description: draft.description,
             keywords: draft.keywords ?? [],
             suggestedAngle: draft.suggestedAngle,
+            // Nullable côté schéma : un modèle qui ne fournit pas de
+            // justification laisse le champ vide plutôt que de faire échouer
+            // la génération pour une métadonnée d'aide à la décision.
+            rationale: draft.rationale,
             generatedByJobId: job.id,
           },
         }),
       ),
     )
 
-    return { topicIds: created.map((topic) => topic.id) }
+    return { topicIds: created.map((topic) => topic.id), skippedDuplicates }
   }
 
   /**
