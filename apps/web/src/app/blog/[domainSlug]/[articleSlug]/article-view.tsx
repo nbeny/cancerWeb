@@ -1,4 +1,5 @@
 import type { PublicArticleFieldsFragment } from '@cancerweb/graphql'
+import { normaliserTitresCorps } from './article-headings'
 
 interface Props {
   article: PublicArticleFieldsFragment
@@ -90,11 +91,16 @@ export function ArticleView({ article }: Props) {
           n'est refaite ici — la dupliquer côté web masquerait sa disparition
           éventuelle côté API, alors que c'est là-bas, et là-bas seulement, que
           la barrière doit tenir (mêmes raisons que
-          `components/editor/preview.tsx`). */}
+          `components/editor/preview.tsx`).
+
+          `normaliserTitresCorps` n'entame en rien ce partage des rôles : elle
+          ajuste un NIVEAU DE TITRE pour que la page n'ait qu'un seul `<h1>`,
+          elle ne retire aucune balise active et n'offre aucune garantie
+          d'innocuité. Voir sa jsdoc. */}
       {article.renderedHtml && (
         <div
           className={`mt-8 text-slate-800 ${STYLE_CORPS}`}
-          dangerouslySetInnerHTML={{ __html: article.renderedHtml }}
+          dangerouslySetInnerHTML={{ __html: normaliserTitresCorps(article.renderedHtml) }}
         />
       )}
     </article>

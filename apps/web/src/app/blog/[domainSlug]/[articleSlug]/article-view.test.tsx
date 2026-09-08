@@ -35,6 +35,56 @@ describe('ArticleView', () => {
     expect(screen.getByText('Corps').tagName).toBe('P')
   })
 
+  // Le défaut trouvé en vérification live : 16 des 17 articles réels
+  // commencent par « # Titre » en Markdown, donc leur `renderedHtml` porte son
+  // propre `<h1>` — la page en affichait deux. Le fixture d'origine utilisait
+  // un corps sans titre, la seule des deux formes qui ne reproduisait pas le
+  // problème. Les deux sont désormais couvertes, et c'est le COMPTE de `<h1>`
+  // qui est affirmé : une assertion sur le seul texte du titre restait verte
+  // avec un doublon.
+  it("n'affiche qu'un seul h1 quand le corps commence par son propre titre", () => {
+    const { container } = render(
+      <ArticleView
+        article={article({ renderedHtml: '<h1>Titre affiché</h1>\n<p>Corps.</p>' })}
+      />,
+    )
+    const titres = container.querySelectorAll('h1')
+    expect(titres).toHaveLength(1)
+    expect(titres[0].textContent).toBe('Titre affiché')
+    // Le corps est conservé, seul le titre redondant disparaît.
+    expect(screen.getByText('Corps.')).toBeDefined()
+  })
+
+  it("n'affiche qu'un seul h1 quand le corps n'a pas de titre de tête", () => {
+    const { container } = render(
+      <ArticleView
+        article={article({ renderedHtml: '<p>Paragraphe direct.</p>\n<h2>Section</h2>' })}
+      />,
+    )
+    const titres = container.querySelectorAll('h1')
+    expect(titres).toHaveLength(1)
+    expect(titres[0].textContent).toBe('Titre affiché')
+    expect(container.querySelector('h2')?.textContent).toBe('Section')
+  })
+
+  // Le titre visible vient de la base, jamais du corps : c'est ce qui garantit
+  // qu'il ne diverge ni du `<title>` ni de la balise Open Graph, tous deux
+  // construits à partir des mêmes champs (voir `article-metadata.ts`).
+  it('affiche le titre canonique et non celui écrit dans le Markdown', () => {
+    const { container } = render(
+      <ArticleView
+        article={article({
+          title: 'Titre canonique',
+          renderedHtml: '<h1>Titre divergent du Markdown</h1>\n<p>Corps.</p>',
+        })}
+      />,
+    )
+    const titres = container.querySelectorAll('h1')
+    expect(titres).toHaveLength(1)
+    expect(titres[0].textContent).toBe('Titre canonique')
+    expect(container.textContent).not.toContain('Titre divergent du Markdown')
+  })
+
   it('formate la date de publication pour un lecteur français', () => {
     render(<ArticleView article={article({ publishedAt: '2026-03-14T09:00:00.000Z' })} />)
     expect(screen.getByText('14/03/2026')).toBeDefined()
