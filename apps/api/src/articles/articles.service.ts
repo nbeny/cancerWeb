@@ -28,6 +28,7 @@ export class ArticlesService {
 
     return this.prisma.$transaction(async (tx) => {
       let topicId: string | undefined
+      let rationale: string | undefined
       if (input.topicId) {
         const topic = await tx.topic.findFirst({ where: { id: input.topicId, domainId } })
         // Même politique NOT_FOUND que pour un domaine/sujet inaccessible :
@@ -46,6 +47,16 @@ export class ArticlesService {
         // l'étape suivante et constater que le sujet est resté intact.
         await tx.topic.update({ where: { id: topic.id }, data: { status: TopicStatus.CONVERTED } })
         topicId = topic.id
+        // L'article porte sa propre copie plutôt qu'une jointure : un sujet
+        // peut être supprimé (`onDelete: SetNull` sur Article.topicId) sans
+        // que l'article perde la raison pour laquelle il a été écrit. La
+        // recopie a lieu ici parce que le sujet est DÉJÀ chargé pour les
+        // contrôles ci-dessus : aucune requête supplémentaire, et les deux
+        // chemins de création (pipeline IA et bouton « Rédiger l'article »,
+        // qui passent tous deux par cette méthode) en héritent.
+        // `?? undefined` et non `?? null` : un sujet sans justification laisse
+        // la colonne à son défaut plutôt que d'écrire une valeur.
+        rationale = topic.rationale ?? undefined
       }
 
       // Même validation que `setCategory` : une `categoryId` qui existe mais
@@ -71,6 +82,7 @@ export class ArticlesService {
           renderedHtml,
           wordCount,
           excerpt: input.excerpt,
+          rationale,
           coverImageUrl: input.coverImageUrl,
           seoTitle: input.seoTitle,
           metaDescription: input.metaDescription,
