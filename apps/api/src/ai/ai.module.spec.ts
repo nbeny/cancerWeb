@@ -2,24 +2,27 @@ import { Test } from '@nestjs/testing'
 import { AiModule, selectAIProvider } from './ai.module'
 import { AI_PROVIDER, AIProviderKey } from './ai.types'
 import { FakeAIProvider } from './providers/fake.provider'
+import { CliAgentProvider } from './providers/cli.provider'
 
 describe('selectAIProvider (fonction pure)', () => {
   const fake = new FakeAIProvider()
+  const cli = new CliAgentProvider()
 
   it("renvoie le FakeAIProvider pour 'fake'", () => {
-    expect(selectAIProvider('fake', { fake })).toBe(fake)
+    expect(selectAIProvider('fake', { fake, cli })).toBe(fake)
   })
 
-  it("échoue explicitement pour 'cli' (pas encore câblé dans le registre)", () => {
-    expect(() => selectAIProvider('cli', { fake })).toThrow(/cli/i)
+  it("renvoie le CliAgentProvider pour 'cli'", () => {
+    const cli = new CliAgentProvider()
+    expect(selectAIProvider('cli', { fake, cli })).toBe(cli)
   })
 
   it("échoue explicitement pour 'http' (aucune implémentation)", () => {
-    expect(() => selectAIProvider('http', { fake })).toThrow(/http/i)
+    expect(() => selectAIProvider('http', { fake, cli })).toThrow(/http/i)
   })
 
   it('échoue sur une valeur inconnue en listant les valeurs acceptées, jamais un repli sur fake', () => {
-    expect(() => selectAIProvider('openai' as AIProviderKey, { fake })).toThrow(/fake, cli, http/)
+    expect(() => selectAIProvider('openai' as AIProviderKey, { fake, cli })).toThrow(/fake, cli, http/)
   })
 })
 
