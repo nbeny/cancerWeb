@@ -57,6 +57,13 @@ COPY --from=build /app/packages/validation/node_modules ./packages/validation/no
 # d'octets) pour que toute invocation de pnpm dans le conteneur (ex. le
 # service `migrate`) utilise la version épinglée.
 COPY --from=build /app/package.json ./package.json
+# Agent CLI utilisé par CliAgentProvider quand AI_PROVIDER=cli (service
+# `worker` uniquement — l'API n'appelle jamais le modèle). Version épinglée :
+# le provider dépend d'un contrat de sortie observé empiriquement (l'agent
+# écrit lui-même output.md, voir docs/ai-cli-smoke-test.md), qu'une mise à
+# jour du CLI pourrait changer en silence. Le binaire natif téléchargé au
+# postinstall fonctionne sous musl (vérifié sur node:22-alpine).
+RUN npm i -g opencode-ai@1.18.25
 RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
 USER app
 WORKDIR /app/apps/api

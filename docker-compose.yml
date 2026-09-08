@@ -84,7 +84,16 @@ services:
     environment:
       DATABASE_URL: postgresql://cancerweb:cancerweb@postgres:5432/cancerweb?schema=public
       REDIS_URL: redis://redis:6379
-      AI_PROVIDER: fake
+      # Seul le worker exécute les étapes du pipeline, donc seul lui appelle
+      # un modèle. L'API garde AI_PROVIDER=fake (via .env) : elle n'a aucun
+      # appel IA à faire, et n'a donc pas besoin du CLI.
+      AI_PROVIDER: cli
+      # opencode écrit son état sous $HOME ; l'utilisateur `app` de l'image
+      # n'a pas de home inscriptible par défaut.
+      HOME: /tmp
+      AI_WORKSPACE_DIR: /workspace
+    volumes:
+      - aiworkspace:/workspace
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -117,3 +126,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  aiworkspace:
