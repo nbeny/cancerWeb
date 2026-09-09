@@ -300,7 +300,11 @@ export function ArticleEditor({ domainId, article: initialArticle, categories, a
 
       <div className="grid gap-4 lg:grid-cols-2" style={{ height: '65vh' }}>
         <MarkdownEditor value={fields.content} onChange={(value) => updateField({ content: value })} />
-        <ArticlePreview html={article.renderedHtml ?? ''} stale={saveStatus !== 'saved'} />
+        {/* Le Markdown en cours de saisie, pas `article.renderedHtml` :
+            l'aperçu suit la frappe au lieu d'attendre l'aller-retour de la
+            sauvegarde temporisée (voir `preview.tsx`). L'état de sauvegarde
+            reste signalé par `SaveIndicator`, en en-tête. */}
+        <ArticlePreview markdown={fields.content} />
       </div>
 
       <div className="rounded-md border border-slate-200 bg-white">
